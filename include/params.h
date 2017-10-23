@@ -1,0 +1,12 @@
+///////////////////////////////////////////
+/// params.h
+///////////////////////////////////////////
+
+#ifndef ____PARAMS__
+#define ____PARAMS__
+
+#include <iostream>
+#include "constants.h"
+
+
+#endif // ____PARAMS__

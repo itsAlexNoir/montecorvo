@@ -1,0 +1,2 @@
+OBJS = \
+communicator.o space.o light.o helmholtz.o
