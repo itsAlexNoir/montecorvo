@@ -71,9 +71,9 @@ class space{
   int get_xrulepts() const;
   int get_yrulepts() const;
   
-  double get_xfdcoeffs(const int i, const int j) const;
-  double get_yfdcoeffs(const int i, const int j) const;
-  double get_nfield(const int i, const int j) const;
+  double get_xfdcoeffs(const int i, const int j);
+  double get_yfdcoeffs(const int i, const int j);
+  double get_nfield(const int i, const int j);
   const arma::mat& get_nfield() const;
   
   // Function that print class members
@@ -100,13 +100,13 @@ inline double space::get_ymax() const {return ymax;}
 inline int space::get_xrulepts() const {return xrulepts;}
 inline int space::get_yrulepts() const {return yrulepts;}
 
-inline double space::get_xfdcoeffs(const int i, const int j) const
+inline double space::get_xfdcoeffs(const int i, const int j)
 { return xfdcoeffs(i, j);}
 
-inline double space::get_yfdcoeffs(const int i, const int j) const
+inline double space::get_yfdcoeffs(const int i, const int j)
 { return yfdcoeffs(i, j);}
 
-inline double space::get_nfield(const int i, const int j) const
+inline double space::get_nfield(const int i, const int j)
 { return nfield(i, j);}
 
 inline const arma::mat& space::get_nfield() const { return nfield;}

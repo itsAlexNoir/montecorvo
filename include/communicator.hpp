@@ -47,22 +47,20 @@ public:
       delete[] iparray[iprocx];
     delete[] iparray;  
     MPI_Finalize();}
-
+  
   // Set / Get routines
   int get_iprocessor() const {return iprocessor;}
   int get_numproc1dx() const {return numproc1dx;}
   int get_numproc1dy() const {return numproc1dy;}
   int get_maxproc1dx() const {return maxproc1dx;}
   int get_maxproc1dy() const {return maxproc1dy;}
-
+  
   int get_ipx() const {return ipx;} 
   int get_ipy() const {return ipy;}
   
   int** get_iparray() const {return iparray;}
   int* get_iparrayx() const {return iparrayy;}
   int* get_iparrayy() const {return iparrayy;}
-  
-  void print_communications();
   
   // Print out communicator parameters on the screen
   void print_communicator_parameters();
@@ -79,7 +77,9 @@ public:
   
   void get_data(dcomplex* data, const int length,
 		const int iprofrom) const;
- 
+  
+  double sumelements(double sumproc) const;
+  dcomplex sumelements(dcomplex sumproc) const;
 };
 
 

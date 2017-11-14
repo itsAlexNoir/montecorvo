@@ -42,7 +42,7 @@ space::space(int _Nx, int _Ny, double _dx, double _dy,
   // Creates coordinates axes 
   x_ax = arma::linspace<arma::vec>(xminlocal,xmaxlocal,Nx);
   y_ax = arma::linspace<arma::vec>(yminlocal,ymaxlocal,Ny);
-  
+
   // Create halo axes
   xhalomin = xminlocal - xfdpts * dx;
   xhalomax = xmaxlocal + xfdpts * dx;
@@ -75,16 +75,18 @@ space::space(int _Nx, int _Ny, double _dx, double _dy,
 void space::print_grid_parameters()
 {
   cout << endl;
-  cout << "----- Grid parameters -------------------------" << endl;
-  cout << " Number of grid points in x:  " << Nx << endl;
-  cout << " Number of grid points in y:  " << Ny << endl;
-  cout << " Grid spacing in x (au):      " << dx << endl;
-  cout << " Grid spacing in y (au):      " << dy << endl;
-  cout << " Finite Difference rule in x: " << xrulepts << endl;
-  cout << " Finite Difference rule in y: " << yrulepts << endl;
-  cout << " Extent in x (au):            " << get_xmax() << endl;
-  cout << " Extent in y (au):            " << get_ymax() << endl;  
-  cout << "------------------------------------------------------" << endl;
+  cout << "----- Grid parameters -------------------------------------------------" << endl;
+  cout << " Number of grid points in x per proc:  " << Nx << endl;
+  cout << " Number of grid points in y per proc:  " << Ny << endl;
+  cout << " Number of total grid points in x:     " << Nx * mycomm->get_numproc1dx() << endl;
+  cout << " Number of total grid points in y:     " << Ny * mycomm->get_numproc1dy() << endl;
+  cout << " Grid spacing in x (au):               " << dx << endl;
+  cout << " Grid spacing in y (au):               " << dy << endl;
+  cout << " Finite Difference rule in x:          " << xrulepts << endl;
+  cout << " Finite Difference rule in y:          " << yrulepts << endl;
+  cout << " Extent in x (au):                     " << get_xmax() << endl;
+  cout << " Extent in y (au):                     " << get_ymax() << endl;  
+  cout << "------------------------------------------------------------------------" << endl;
   cout << endl << endl; 
  
 }
@@ -95,32 +97,40 @@ void space::set_refractive_index()
 {
   
   double rad {0.0};
-  double r0 {2.0};
+  double r0 {4.0};
   double n1 {1.445};
   double n2 {1.4378};
+  
+  double ome {0.1};
+  
+  for(int ix=0; ix<Nx; ix++)
+    for(int iy=0; iy<Ny; iy++)
+      {
+  	rad = sqrt( x_ax(ix) * x_ax(ix) +
+  		    y_ax(iy) * y_ax(iy));
+  	if(rad <= r0)
+  	  nfield(ix,iy) = n1;
+  	else
+  	  nfield(ix,iy) = n2;    
+      }
   
   // for(int ix=0; ix<Nx; ix++)
   //   for(int iy=0; iy<Ny; iy++)
   //     {
   // 	rad = sqrt( x_ax(ix) * x_ax(ix) +
   // 		    y_ax(iy) * y_ax(iy));
-  // 	if(rad <= r0)
+  // 	if(abs(x_ax(ix)) <= r0  && abs(y_ax(iy))<=r0)
   // 	  nfield(ix,iy) = n1;
   // 	else
   // 	  nfield(ix,iy) = n2;    
   //     }
   
-  for(int ix=0; ix<Nx; ix++)
-    for(int iy=0; iy<Ny; iy++)
-      {
-	rad = sqrt( x_ax(ix) * x_ax(ix) +
-		    y_ax(iy) * y_ax(iy));
-	if(abs(x_ax(ix)) <= r0  && abs(y_ax(iy))<=r0)
-	  nfield(ix,iy) = n1;
-	else
-	  nfield(ix,iy) = n2;    
-      }
-
+  // for(int ix=0; ix<Nx; ix++)
+  //   for(int iy=0; iy<Ny; iy++)
+  //     {
+  // 	nfield(ix, iy) = 0.5 * ome * ome *
+  // 	  ( x_ax(ix) * x_ax(ix) + y_ax(iy) * y_ax(iy) );
+  //     }	
 }
 
 ///////////////////////////////////////////////////////////////////

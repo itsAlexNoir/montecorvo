@@ -1,8 +1,8 @@
 # -----------------------------------------------------------------------------#
 #                                                                              #
-# ballard gnu                                                                  #
+# zahir gnu                                                                    #
 #                							       #
-# Set for intel i7 architecture with intel processors			       #
+# Set for linux machines with intel i7 architecture with intel processors      #
 #                                                                              #
 # -----------------------------------------------------------------------------#
 
@@ -17,6 +17,7 @@ BIN          = ${HELM_ROOT}/bin
 CC	 = gcc
 CXX	 = g++
 PCC 	 = mpicc
+PCXX	 = mpicxx
 LIBTOOL  = glibtool
 compiler = gnu
 
@@ -24,7 +25,7 @@ compiler = gnu
 #DEB         = -check all
 #DEB         = -fprofile-arcs -ftest-coverage -fPIC -O0
 #DEB          = -p -ffast-math
-#DEB         = -gen-interfaces -warn interfaces
+#DEB         =  -gen-interfaces -warn interfaces
 
 # Optimisation flags
 OPT         = -O3 -funroll-loops -ftree-vectorize -ffast-math -fcx-limited-range -fopenmp
@@ -32,8 +33,8 @@ OPT         = -O3 -funroll-loops -ftree-vectorize -ffast-math -fcx-limited-range
 # Vectorisation flags
 #VEC = -funroll-loops -ftree-vectorize
 
-CCFLAGS  = ${DEB} ${OPT} ${PETSC_CCFLAGS}
-CXXFLAGS = ${DEB} ${OPT} -std=c++11 ${PETSC_CCPPFLAGS}
+CCFLAGS  = ${DEB} ${OPT} ${PETSC_CCFLAGS} ${SLEPC_CCFLAGS}
+CXXFLAGS = ${DEB} ${OPT} -std=c++11 ${PETSC_CCPPFLAGS} ${SLEPC_CCPPFLAGS}
 
 ######### Paths to external libraries
 ### Eigen
@@ -48,18 +49,20 @@ ARMA_LIBS    = /usr/lib
 
 ### Openblas
 OPENBLAS_ROOT    = 
-OPENBLAS_INCLUDE = /usr/include
+OPENBLAS_INCLUDE = /usr/includev
 OPENBLAS_LIBS    = /usr/lib
 
 ### PETSc
-PETSC_DIR = /opt/petsc/3.7.7/openmpi-gnu-optimised/complex
+PETSC_DIR = /opt/petsc/3.8.0/openmpi-gnu/debug/complex
+#PETSC_DIR = /opt/petsc/3.8.0/openmpi-gnu/optim/complex
 
 ### SLEPc
-SLEPC_DIR = /opt/slepc/3.7.4/openmpi-gnu-optimised/complex
+SLEPC_DIR = /opt/slepc/3.8.0/openmpi-gnu/debug/complex
+#SLEPC_DIR = /opt/slepc/3.8.0/openmpi-gnu/optim/complex
 
 ### 
-INCLUDE = ${SFAPP_INCLUDE} #${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
-LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB}
+INCLUDE = ${HELM_INCLUDE} #${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
+LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_EPS_LIB}
 
 # -----------------------------------------------------------------------------#
 #                                                                              #
@@ -70,12 +73,12 @@ LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB}
 # Fortran90
 
 %.o:%.c
-	${CC} ${CCFLAGS} -c $< -I ${INCLUDE}
+	${PCC} ${CCFLAGS} -c $< -I ${INCLUDE}
 
 # Fortran77
 
-%.o:%.cpp
-	${CXX} ${CXXFLAGS} -c $< -I ${INCLUDE}
+%.o:%.cpp chkopts
+	${PCXX} ${CXXFLAGS} -c $< -I ${INCLUDE}
 
 # -----------------------------------------------------------------------------#
 #                                                                              #

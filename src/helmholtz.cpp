@@ -11,7 +11,7 @@
 
 int main(int argc,char **argv){
   
-  communicator comm(argc, argv, 3, 1);
+  communicator comm(argc, argv, 11, 1);
   
   // Print starting date
   auto point_time = chrono::system_clock::now();
@@ -19,15 +19,34 @@ int main(int argc,char **argv){
   if(comm.get_iprocessor()==0)
     cout << endl << "Program starts at " << ctime(&start_date) << endl;
   
-  int Nx{113};
-  int Ny{335};
+  // int Nx{4};
+  // int Ny{4};
+  int Nx{19};
+  int Ny {201};
   
-  int rulepts{5};
+  //int Nx{27};
+  //int Ny{301};
   
-  double dx{0.3};
-  double dy{0.3};
+  //int Nx{37};
+  //int Ny{301};
+  
+  //int Nx{55};
+  //int Ny{601};
+  
+  //int Nx{31};
+  //int Ny{341};
+  
+  int rulepts{3};
+  
+  double dx{0.2};
+  double dy{0.2};
   
   double wavelength{0.8};
+  int num_modes{4};
+  
+  // Print out communication
+  if(comm.get_iprocessor()==0)  
+    comm.print_communicator_parameters();
   
   // Initialise space
   space grid(Nx, Ny, dx, dy, rulepts, rulepts, comm);
@@ -46,7 +65,7 @@ int main(int argc,char **argv){
   // Create wavefunction and set it to the ground state
   auto t0 = chrono::high_resolution_clock::now();
   
-  pulse.solve_helmholtz_eigenproblem(argc, argv);
+  pulse.solve_helmholtz_eigenproblem(argc, argv, num_modes);
   
   auto t1 = chrono::high_resolution_clock::now();
   

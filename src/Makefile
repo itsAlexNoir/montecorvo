@@ -5,7 +5,7 @@
 #####################################################
 # Include settings for specific architecture
 
-include sys/ballard_gnu.make
+include sys/zahir_gnu.make
 
 TARGET = ${BIN}/helmholtz.exec
 VPATH  = ${INCLUDE}
@@ -34,8 +34,8 @@ helmholtz.o: space.o
 
 ${TARGET}: ${OBJS}
 	@echo 'Creating executable...'
-	${PCXX} ${CXXFLAGS} -o ${TARGET} ${OBJS} -I ${INCLUDE} \
-	-L ${LIBS}
+	${PCXX} ${CXXFLAGS} -o ${TARGET} ${OBJS} \
+	-I ${INCLUDE} -L ${LIBS}
 
 clean::
 	rm -f *.o *.optrpt *.gcno

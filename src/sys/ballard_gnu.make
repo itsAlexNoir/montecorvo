@@ -30,8 +30,8 @@ OPT         = -O3 -funroll-loops -ftree-vectorize -ffast-math -fcx-limited-range
 # Vectorisation flags
 #VEC = -funroll-loops -ftree-vectorize
 
-CCFLAGS  = ${DEB} ${OPT} ${PETSC_CCFLAGS}	
-CXXFLAGS = ${DEB} ${OPT} -std=c++11 ${PETSC_CCPPFLAGS}
+CCFLAGS  = ${DEB} ${OPT} ${PETSC_CCFLAGS} ${SLEPC_CCFLAGS}
+CXXFLAGS = ${DEB} ${OPT} -std=c++11 ${PETSC_CCPPFLAGS} ${SLEPC_CCPPFLAGS}
 
 ######### Paths to external libraries
 ### Eigen
@@ -56,7 +56,7 @@ PETSC_DIR = /opt/petsc/3.7.7/mpich-gnu/complex
 SLEPC_DIR = /opt/slepc/3.7.4/mpich-gnu/complex
 
 ### 
-INCLUDE = ${SFAPP_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
+INCLUDE = ${HELM_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
 LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB}
 
 # -----------------------------------------------------------------------------#

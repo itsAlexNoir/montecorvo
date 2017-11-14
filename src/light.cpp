@@ -1,14 +1,13 @@
+
 ////////////
 ////  light.cpp
 ////
 ////  Contains the class functions for the light class
 ////////////
-#include <iostream>
-#include <math.h>
 #include <slepceps.h>
 #include "light.hpp"
 
-light::light(const space& grid, const communicator& comm,
+light::light(space& grid, communicator& comm,
 	     double _wavel):
   mygrid{&grid}, mycomm{&comm}, wavelength{_wavel},
   field(grid.get_Nx(),grid.get_Ny(),arma::fill::zeros)
@@ -16,6 +15,8 @@ light::light(const space& grid, const communicator& comm,
   // Asign value to private members
   Nx            = mygrid->get_Nx();
   Ny            = mygrid->get_Ny();
+  Nxglobal      = Nx * mycomm->get_numproc1dx();
+  Nyglobal      = Ny * mycomm->get_numproc1dy();
   dx            = mygrid->get_dx();
   dy            = mygrid->get_dy();  
   x_ax          = mygrid->get_x_ax();
@@ -29,13 +30,15 @@ light::light(const space& grid, const communicator& comm,
 
 double light::get_norm()
 {
-  double norm = 0.0;
+  double norm {0.0};
+  double normproc {0.0};
   
-  for(int ix=0; ix<Nx; ++ix)
-    for(int iy=0; iy<Ny; ++iy)
-      norm += real(conj(field(ix, iy))
-		   * field(ix, iy));
+  for(int iy=0; iy<Ny; ++iy)
+    for(int ix=0; ix<Nx; ++ix)
+      normproc += real(conj(field(ix, iy))
+		       * field(ix, iy));
   
+  norm = mycomm->sumelements(normproc);
   return norm *= dx * dy;
 }
 
@@ -118,7 +121,7 @@ void light::save_observable(const arma::vec& time, const arma::vec& obs,
 //////////////////////////////////
 
 void light::save_observable(const arma::vec& time, const arma::cx_vec& obs,
-			   const string& name)
+			    const string& name)
 {
   ofstream file;
   
@@ -137,23 +140,23 @@ void light::save_observable(const arma::vec& time, const arma::cx_vec& obs,
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 
-arma::cx_mat light::apply_laplacian(const halo_cx_mat& halofunc)
+arma::cx_mat light::apply_laplacian(halo_cx_mat& halofunc)
 {
   int xfdpts = (mygrid->get_xrulepts() - 1) * 0.5;
   int yfdpts = (mygrid->get_yrulepts() - 1) * 0.5;
   arma::cx_mat lapfield(Nx,Ny,arma::fill::zeros);
   
   // Apply 2nd derivative along the x axis
-  for(int ix=0; ix<Nx; ix++)
-    for(int ifd=-xfdpts; ifd<xfdpts+1; ifd++)
-      for(int iy=0; iy<Ny; iy++)
+  for(int ifd=-xfdpts; ifd<xfdpts+1; ifd++)
+    for(int iy=0; iy<Ny; iy++)
+      for(int ix=0; ix<Nx; ix++)
   	lapfield(ix,iy) += mygrid->get_xfdcoeffs(ifd,2) * halofunc(ix+ifd,iy);
   
   // Apply 2nd derivative along the y axis
-  for(int ix=0; ix<Nx; ix++)
-    for(int iy=0; iy<Ny; iy++)
-      for(int ifd=-yfdpts; ifd<yfdpts+1; ifd++)
-  	lapfield(ix,iy) += mygrid->get_yfdcoeffs(ifd,2) * halofunc(ix, iy+ifd);
+  for(int iy=0; iy<Ny; iy++)
+    for(int ifd=-yfdpts; ifd<yfdpts+1; ifd++)
+      for(int ix=0; ix<Nx; ix++)
+	lapfield(ix,iy) += mygrid->get_yfdcoeffs(ifd,2) * halofunc(ix,iy+ifd);
   
   return lapfield;
 }
@@ -165,97 +168,146 @@ void light::apply_helmholtz()
   // Create field matrix with halo points
   halo_cx_mat halofield(Nx,Ny,
 			mygrid->get_xrulepts(),mygrid->get_yrulepts());
+  // and set it to zero
+  halofield.zeros();
   
   // Copy data from field to halo halofield matrices
   arma::cx_mat lapfield(Nx,Ny,arma::fill::zeros);
   
-  // for(int ix=0; ix<Nx; ix++)
-  //   for(int iy=0; iy<Ny; iy++)
-  //     halofield.set_value(ix, iy, field(ix, iy) );
-
   communicate_halo_points(halofield);
   
   // Apply Laplacian operator
   lapfield = apply_laplacian(halofield);
   
   // Apply potential
-  for(int ix=0; ix<Nx; ix++)
-    for(int iy=0; iy<Ny; iy++)
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
       lapfield(ix, iy) += mygrid->get_nfield(ix, iy) * mygrid->get_nfield(ix, iy) *
   	k0 * k0 * field(ix, iy);
   
   field = lapfield;
+  
 }
 
 ///////////////////////////////////////////////////////////////////
 
-int light::solve_helmholtz_eigenproblem(int argc,char **argv)
+int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_modes)
 {
   
-  Mat            A;           /* problem matrix */
+  Mat            Hmat;           /* problem matrix */
   EPS            eps;         /* eigenproblem solver context */
   EPSType        type;
   PetscReal      error,tol,re,im;
   PetscScalar    kr,ki;
   PetscScalar    matelem;
   Vec            xr,xi;
-  PetscInt       n = Nx * Ny;
-  PetscInt       k, l;
-  PetscInt       i,Istart,Iend,nev,maxit,its,nconv;
+  PetscInt       Nlocal  = Nx * Ny;
+  PetscInt       Nglobal = Nxglobal * Nyglobal;
+  PetscInt       Istart,Iend,nev,maxit,its,nconv;
+  PetscInt       II, JJ, nrow, ncol;
   PetscErrorCode ierr;
-  int            xrulepts = mygrid->get_xrulepts();
-  int            yrulepts = mygrid->get_yrulepts();
+  PetscInt       xrulepts = mygrid->get_xrulepts();
+  PetscInt       yrulepts = mygrid->get_yrulepts();
+  PetscInt       xfdpts = (xrulepts - 1)*0.5;
+  PetscInt       yfdpts = (yrulepts - 1)*0.5;
+  int            maxproc1dx = mycomm->get_maxproc1dx();
+  int            maxproc1dy = mycomm->get_maxproc1dy();
+  int            iproc      = mycomm->get_iprocessor();
+  int            ipx        = mycomm->get_ipx();
+  int            ipy        = mycomm->get_ipy();
   
-  static char help[] = "Solving Helmholtz equation.";
-  
-  SlepcInitialize(&argc,&argv,(char*)0,help);
+  SlepcInitialize(&argc,&argv,(char*)0,NULL);
   
 #if !defined(PETSC_USE_COMPLEX)
   SETERRQ(PETSC_COMM_WORLD,1,"This example requires complex numbers");
 #endif
   
-  ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
-  // ierr = PetscPrintf(PETSC_COMM_WORLD,"\n1-D Laplacian Eigenproblem, n=%D\n\n",n);CHKERRQ(ierr);
-  
   // Create the matrix that defines the eigensystem
+  ierr = MatCreate(PETSC_COMM_WORLD,&Hmat);CHKERRQ(ierr);
+  //ierr = MatSetSizes(Hmat,PETSC_DECIDE,PETSC_DECIDE,Nglobal,Nglobal);CHKERRQ(ierr);
+  ierr = MatSetSizes(Hmat,Nlocal,Nlocal,Nglobal,Nglobal);CHKERRQ(ierr);
+  ierr = MatSetType(Hmat, MATAIJ);
   
-  ierr = MatCreate(PETSC_COMM_WORLD,&A);CHKERRQ(ierr);
-  ierr = MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,n,n);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(A);CHKERRQ(ierr);
-  ierr = MatSetUp(A);CHKERRQ(ierr);
+  ierr = MatSeqAIJSetPreallocation(Hmat, xrulepts+yrulepts, NULL);
+  ierr = MatMPIAIJSetPreallocation(Hmat, xrulepts + yrulepts, NULL, yrulepts, NULL);
+  ierr = MatSetFromOptions(Hmat);CHKERRQ(ierr);
+  //ierr = MatSetOption(Hmat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  ierr = MatSetUp(Hmat);CHKERRQ(ierr);
   
-  ierr = MatGetOwnershipRange(A,&Istart,&Iend);CHKERRQ(ierr);
+  ierr = MatGetOwnershipRange(Hmat,&Istart,&Iend);CHKERRQ(ierr);
+
+  //
+  // -- Create PETSC matrix ---
   
-  k = -1;
-  for(int ix=0; ix<Nx; ix++)
-    for(int iy=0; iy<Ny; iy++)
+  // Create matrix column vector,
+  arma::cx_mat colvec(Nx,Ny,arma::fill::zeros);
+  // and vectors containing indexes
+  arma::uvec indxpair(2);
+  arma::uvec indxvec(1);
+  
+  // Create matrix with halo points
+  halo_cx_mat halovec(Nx,Ny,
+		      mygrid->get_xrulepts(),mygrid->get_yrulepts());
+  
+  for(int iyy=-yfdpts; iyy<Ny+yfdpts; iyy++)
+    for(int ixx=-xfdpts; ixx<Nx+xfdpts; ixx++)
       {
-	k += 1;
-	field.zeros();
-	field(ix, iy) = One;
+  	halovec.zeros();
+  	if(ipx==0 && ixx<0)
+  	  halovec(ixx, iyy) = Zero;
+  	else if(ipy==0 && iyy<0)
+  	  halovec(ixx, iyy) = Zero;
+  	else if(ipx==maxproc1dx && ixx>=Nx)
+  	  halovec(ixx, iyy) = Zero;
+  	else if(ipy==maxproc1dy && iyy>=Ny)
+  	  halovec(ixx, iyy) = Zero;
+  	else
+  	  halovec(ixx, iyy) = One;
 	
-	apply_helmholtz();
+  	ncol = Nx * iyy + ixx;
+  	colvec.zeros();
 	
-	l = -1;
-	for(int ixx=0; ixx<Nx; ixx++)
-	  for(int iyy=0; iyy<Ny; iyy++)
-	    {
-	      l += 1;
-	      if( (abs(k-l)<xrulepts-1) || (abs(k-l)<yrulepts-1))
-		{
-		  matelem = field(ixx, iyy);
-		  ierr = MatSetValue(A, l, k, matelem, INSERT_VALUES);
-		  //cout << "l " << l << " k " << k << " mat: " << matelem << endl;
-		  CHKERRQ(ierr);
-		}
-	    }
-      } 
+  	// // Apply 2nd derivative along the x axis
+  	for(int iy=0; iy<Ny; iy++)
+  	  for(int ix=0; ix<Nx; ix++)
+  	    for(int ifd=-xfdpts; ifd<xfdpts+1; ifd++)
+  	      colvec(ix,iy) += mygrid->get_xfdcoeffs(ifd,2) * halovec(ix+ifd,iy);
+	
+  	// Apply 2nd derivative along the y axis
+  	for(int iy=0; iy<Ny; iy++)
+  	  for(int ifd=-yfdpts; ifd<yfdpts+1; ifd++)
+  	    for(int ix=0; ix<Nx; ix++)
+  	      colvec(ix,iy) += mygrid->get_yfdcoeffs(ifd,2) * halovec(ix, iy+ifd);
+	
+  	// Apply potential
+  	for(int iy=0; iy<Ny; iy++)
+  	  for(int ix=0; ix<Nx; ix++)
+  	    colvec(ix, iy) += mygrid->get_nfield(ix, iy) * mygrid->get_nfield(ix, iy) *
+  	      k0 * k0 * halovec(ix, iy);
+	
+  	//colvec = - colvec;
+  	arma::uvec indxvec = arma::find(colvec);
+  	indxvec.set_size(size(arma::find(colvec)));
+  	indxvec = arma::find(colvec);
+	
+  	for(int k=0; k<indxvec.size(); k++)
+  	  {
+  	    nrow  = indxvec(k);
+  	    indxpair = ind2sub( size(colvec), nrow );
+  	    matelem = colvec(indxpair(0),indxpair(1));
+  	    II = iproc * Nlocal + nrow;
+  	    JJ = iproc * Nlocal + ncol;
+	    ierr = MatSetValues(Hmat, 1, &II, 1, &JJ, &matelem, INSERT_VALUES);
+  	  }
+	
+      }
   
-  ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  
-  ierr = MatCreateVecs(A,NULL,&xr);CHKERRQ(ierr);
-  ierr = MatCreateVecs(A,NULL,&xi);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(Hmat,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(Hmat,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  //ierr = MatSetOption(Hmat,MAT_SYMMETRIC, PETSC_TRUE);CHKERRQ(ierr);
+
+  ierr = MatCreateVecs(Hmat,NULL,&xr);CHKERRQ(ierr);
+  ierr = MatCreateVecs(Hmat,NULL,&xi);CHKERRQ(ierr);
   
   // Create the eigensolver and set various options
   /*
@@ -264,12 +316,12 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv)
   ierr = EPSCreate(PETSC_COMM_WORLD,&eps);CHKERRQ(ierr);
   
   // Set operators. In this case, it is a standard eigenvalue problem
-  ierr = EPSSetOperators(eps,A,NULL);CHKERRQ(ierr);
+  ierr = EPSSetOperators(eps,Hmat,NULL);CHKERRQ(ierr);
   ierr = EPSSetProblemType(eps,EPS_HEP);CHKERRQ(ierr);
-  //ierr = EPSSetType(eps,EPSTRLAN);
+  //ierr = EPSSetType(eps,EPSARNOLDI);
   //EPSSetWhichEigenpairs(eps,EPS_SMALLEST_REAL);
   ierr = EPSSetTolerances(eps,1e-8,PETSC_DEFAULT);
-  
+  ierr = EPSSetDimensions(eps,num_eigen_modes,PETSC_DEFAULT,PETSC_DEFAULT);
   // Set solver parameters at runtime
   ierr = EPSSetFromOptions(eps);CHKERRQ(ierr);
   
@@ -287,23 +339,29 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv)
   ierr = PetscPrintf(PETSC_COMM_WORLD," Number of requested eigenvalues: %D\n",nev);CHKERRQ(ierr);
   ierr = EPSGetTolerances(eps,&tol,&maxit);CHKERRQ(ierr);
   ierr = PetscPrintf(PETSC_COMM_WORLD," Stopping condition: tol=%.4g, maxit=%D\n",(double)tol,maxit);CHKERRQ(ierr);
-
+  
   // Display solution and clean up
-   /*
-     Get number of converged approximate eigenpairs
+  /*
+    Get number of converged approximate eigenpairs
   */
   ierr = EPSGetConverged(eps,&nconv);CHKERRQ(ierr);
   ierr = PetscPrintf(PETSC_COMM_WORLD," Number of converged eigenpairs: %D\n\n",nconv);CHKERRQ(ierr);
-
+  
+  // Open to file to save eigenenergies of the modes
+  ofstream energyfile;
+  string filename = "energy_modes.dat";
+  if (mycomm->get_iprocessor()==0)
+    energyfile.open(filename);
+  
   if (nconv>0) {
     /*
-       Display eigenvalues and relative errors
+      Display eigenvalues and relative errors
     */
     ierr = PetscPrintf(PETSC_COMM_WORLD,
-         "           k          ||Ax-kx||/||kx||\n"
-         "   ----------------- ------------------\n");CHKERRQ(ierr);
-
-    for (i=0;i<nconv;i++) {
+		       "        beta^2              beta         ||Ax-kx||/||kx||\n"
+		       "   ----------------- ------------------ ------------------\n");CHKERRQ(ierr);
+    
+    for (int i=0;i<nconv;i++) {
       //  Get converged eigenpairs: i-th eigenvalue is stored in kr (real part) and
       // ki (imaginary part)
       
@@ -320,23 +378,34 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv)
       im = ki;
 #endif
       if (im!=0.0) {
-        ierr = PetscPrintf(PETSC_COMM_WORLD," %9f%+9fi %12g\n",(double)re,(double)im,(double)error);CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_WORLD," %9f%+9fi %9f%+9fi %12g\n",(double(re)),(double(im)),sqrt(double(re)),sqrt(double(im)),
+			   (double)error);CHKERRQ(ierr);
       } else {
-        ierr = PetscPrintf(PETSC_COMM_WORLD,"   %12f       %12g\n",(double)re,(double)error);CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_WORLD,"   %12f       %12f       %12g\n",(double(re)),sqrt(double(re)),(double)error);CHKERRQ(ierr);
       }
+      // Save eigen energies to file
+      if (mycomm->get_iprocessor()==0)
+      	energyfile << i << " " << double(re) << " " << double(im)
+		   << sqrt(double(re)) << " " << sqrt(double(im)) << endl; 
     }
+    
     ierr = PetscPrintf(PETSC_COMM_WORLD,"\n");CHKERRQ(ierr);
   }
   
+  // Save eigenvectors to file
   // for(int ix=0; ix<Nx; ixx)    
   //   cout << PetscRealPart(xr[ix]) << PetscRealPart(xi[ix]) << endl;
   
+  // Close file
+  energyfile.close();
+  
   // Free work space
   ierr = EPSDestroy(&eps);CHKERRQ(ierr);
-  ierr = MatDestroy(&A);CHKERRQ(ierr);
+  ierr = MatDestroy(&Hmat);CHKERRQ(ierr);
   ierr = VecDestroy(&xr);CHKERRQ(ierr);
   ierr = VecDestroy(&xi);CHKERRQ(ierr);
   ierr = SlepcFinalize();
+  
   return ierr;
   
 }
@@ -396,17 +465,17 @@ void light::communicate_halo_points(halo_cx_mat& halofield)
       
       // Set up the send arrays
       k = -1;
-      for(int ix=0; ix<xfdpts; ix++)
-	for(int iy=0; iy<Ny; iy++)
+      for(int iy=0; iy<Ny; iy++)
+	for(int ix=0; ix<xfdpts; ix++)
 	  {
 	    k += 1;
 	    funcputl[k] = field(ix, iy);
 	    funcputr[k] = field(Nx-xfdpts+ix, iy);
 	  }
-
+      
       k = -1;
-      for(int ix=0; ix<xfdpts; ix++)
-	for(int iy=0; iy<Ny; iy++)
+      for(int iy=0; iy<Ny; iy++)
+	for(int ix=0; ix<xfdpts; ix++)
 	  {
 	    k += 1;
 	    if(ipx == 0)
@@ -446,12 +515,20 @@ void light::communicate_halo_points(halo_cx_mat& halofield)
       	}
       
       k = -1;
-      for(int ix=0; ix<xfdpts; ix++)
-      	for(int iy=0; iy<Ny; iy++)
+      for(int iy=0; iy<Ny; iy++)
+	for(int ix=0; ix<xfdpts; ix++)
       	  {
       	    k += 1;
-      	    halofield(-xfdpts+ix, iy) = funcgetl[k];
-      	    halofield(Nx+ix, iy) = funcgetl[k];
+	    //halofield(-xfdpts+ix, iy) = funcgetl[k];
+      	    //halofield(Nx+ix, iy) = funcgetr[k];
+	    halofield.set_value(-xfdpts+ix,iy,funcgetl[k]);
+	    halofield.set_value(Nx+ix,iy,funcgetr[k]);
+	    
+	    // if(ipx=3)
+	    //   {
+	    // 	cout << funcgetl[k] << endl;
+	    // 	cout << "halo: " << halofield(-xfdpts+ix,iy) << endl;
+	    //   }
       	  } 
       
       delete[] funcgetl;
@@ -475,8 +552,8 @@ void light::communicate_halo_points(halo_cx_mat& halofield)
       
       // Set up the send arrays
       k = -1;
-      for(int ix=0; ix<Nx; ix++)
-  	for(int iy=0; iy<yfdpts; iy++)
+      for(int iy=0; iy<yfdpts; iy++)
+	for(int ix=0; ix<Nx; ix++)
   	  {
   	    k += 1;
   	    funcputl[k] = field(ix, iy);
@@ -484,8 +561,8 @@ void light::communicate_halo_points(halo_cx_mat& halofield)
   	  }
       
       k = -1;
-      for(int ix=0; ix<Nx; ix++)
-  	for(int iy=0; iy<yfdpts; iy++)
+      for(int iy=0; iy<yfdpts; iy++)
+	for(int ix=0; ix<Nx; ix++)
   	  {
   	    k += 1;
   	    if(ipy == 0)
@@ -526,13 +603,22 @@ void light::communicate_halo_points(halo_cx_mat& halofield)
   	}
       
       k = -1;
-      for(int ix=0; ix<Nx; ix++)
-  	for(int iy=0; iy<yfdpts; iy++)
+      for(int iy=0; iy<yfdpts; iy++)
+	for(int ix=0; ix<Nx; ix++)
   	  {
   	    k += 1;
-  	    halofield(ix, -yfdpts+iy) = funcgetl[k];
-  	    halofield(ix, Ny+iy) = funcgetl[k];
-  	  } 
+  	    //halofield(ix, -yfdpts+iy) = funcgetl[k];
+  	    //halofield(ix, Ny+iy) = funcgetr[k];
+  	    halofield.set_value(ix, -yfdpts+iy, funcgetl[k]);
+  	    halofield.set_value(ix, Ny+iy, funcgetr[k]);
+	    
+	    // if(ipx=3)
+	    //   {
+	    // 	cout << funcgetl[k] << endl;
+	    // 	cout << "halo: " << halofield(ix,-yfdpts+iy) << endl;
+	    //   }
+	    
+	  } 
       
       delete[] funcgetl;
       delete[] funcgetr;

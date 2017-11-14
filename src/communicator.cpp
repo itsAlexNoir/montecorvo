@@ -13,7 +13,7 @@ communicator::communicator(int argc, char **argv,
 			   const int numprocessorsy):
   numproc1dx{numprocessorsx}, numproc1dy{numprocessorsy}
 {
-
+  
   int ipro, mpi_size, ierr;
   
   // Start up MPI
@@ -22,56 +22,55 @@ communicator::communicator(int argc, char **argv,
   // Find out number of processors.
   ierr = MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-  // Check if the number of processors requested are OK for the calculation
-  if(mpi_size == numprocessors)
-    {
-      string message = "Number of processors requested for calculation (N="
-        + to_string(mpi_size)
-	+ ") does not equal the number of processors specified in the input file (N = "
-	+ to_string(numprocessors) + ") ";
-      parallel_stop(message);
-    }
-  
   // Find out number of the processor we are working on.
   ierr = MPI_Comm_rank(MPI_COMM_WORLD, &iprocessor);
-  
   
   numprocessors = numproc1dx * numproc1dy; 
   maxproc1dx    = numproc1dx - 1;
   maxproc1dy    = numproc1dy - 1;
-
+  
+  //Check if the number of processors requested are OK for the calculation
+  if(mpi_size != numprocessors)
+    {
+      string message = "Number of processors requested for calculation (N="
+        + to_string(mpi_size)
+  	+ ") does not equal the number of processors specified in the input file (N = "
+  	+ to_string(numprocessors) + ") ";
+      parallel_stop(message);
+    }
+  
   iparray = new int*[numproc1dx];
   for(int iprocx=0; iprocx<numproc1dx; iprocx++)
     iparray[iprocx] = new int[numproc1dy];
   
-  iparrayx = new int[numproc1dx];
-  iparrayy = new int[numproc1dy];
+  iparrayx = new int[numprocessors];
+  iparrayy = new int[numprocessors];
   
   for(int iprocx=0; iprocx<numproc1dx; iprocx++)
     for(int iprocy=0; iprocy<numproc1dy; iprocy++)
       iparray[iprocx][iprocy] = 100.0;
   
-  for(int iprocx=0; iprocx<numproc1dx; iprocx++)
+  for(int iprocx=0; iprocx<numprocessors; iprocx++)
     iparrayx[iprocx] = 100.0;
   
-  for(int iprocy=0; iprocy<numproc1dy; iprocy++)
+  for(int iprocy=0; iprocy<numprocessors; iprocy++)
     iparrayy[iprocy] = 100.0;
   
   ipro = -1;
   for(int iprocx=0; iprocx<numproc1dx; iprocx++)
     for(int iprocy=0; iprocy<numproc1dy; iprocy++)
       {
-	    ipro += 1;
-	    
-	    iparray[iprocx][iprocy] = ipro;
-            iparrayx[ipro]          = iprocx;
-	    iparrayy[ipro]          = iprocy;
-	    
-	    if(iprocessor == ipro)
-	      {
-		ipx = iprocx;
-		ipy = iprocy;
-	      }
+	ipro += 1;
+	
+	iparray[iprocx][iprocy] = ipro;
+	iparrayx[ipro]          = iprocx;
+	iparrayy[ipro]          = iprocy;
+	
+	if(iprocessor == ipro)
+	  {
+	    ipx = iprocx;
+	    ipy = iprocy;
+	  }
       }
   
 }
@@ -87,19 +86,18 @@ void communicator::print_communicator_parameters()
   cout << " Number of processors:      " << numprocessors << endl;
   cout << "----------------------------------------------------" << endl;
   cout << endl << endl; 
-
+  
 }
 
 ///////////////////////////////////////////////////////////////////
 
 void communicator::parallel_stop(const string message ) const
 {    
-  
   if(iprocessor==0)
-    cout << message << endl;
-
-  exit(1);
+    cout << message << endl << endl << endl;
   
+  MPI_Finalize();
+  exit(1);
 }    
 
 ///////////////////////////////////////////////////////////////////
@@ -147,6 +145,34 @@ void communicator::get_data(dcomplex* data, const int length,
   ierr = MPI_Recv(data, length, MPI_C_DOUBLE_COMPLEX,
 		  iprofrom, itag, MPI_COMM_WORLD, &status);
   
+}
+
+///////////////////////////////////////////////////////////////////
+
+double communicator::sumelements( double sumprocessor) const
+{
+  
+  int ierr;
+  double sumtotal {0.0};
+  
+  ierr = MPI_Allreduce(&sumprocessor, &sumtotal, 1, MPI_DOUBLE,
+		       MPI_SUM, MPI_COMM_WORLD);
+  
+  return sumtotal;
+}
+
+///////////////////////////////////////////////////////////////////
+
+dcomplex communicator::sumelements( dcomplex sumprocessor) const
+{
+  
+  int ierr;
+  dcomplex sumtotal {Zero};
+  
+  ierr = MPI_Allreduce(&sumprocessor, &sumtotal, 1, MPI_C_DOUBLE_COMPLEX,
+		       MPI_SUM, MPI_COMM_WORLD);
+  
+  return sumtotal;
 }
 
 ///////////////////////////////////////////////////////////////////

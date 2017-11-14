@@ -26,7 +26,7 @@ public:
   ~halo_vec(){}
   
   // Overloaded operators
-  inline double operator()(const int i) const {return array(i+fdpts);}
+  inline double& operator()(const int i) {return array(i+fdpts);}
   inline halo_vec& operator=(const arma::vec& eqarr)
   {array = eqarr; return *this;}
   inline void zeros() {array.zeros();}
@@ -48,7 +48,7 @@ public:
   ~halo1D_mat(){}
   
   // Overloaded operators
-  inline double operator()(const int i, const int j) const
+  inline double& operator()(const int i, const int j)
   {return array(i+fdpts,j);}
   inline halo1D_mat& operator=(const arma::mat& eqarr)
   {array = eqarr; return *this;}
@@ -75,7 +75,7 @@ public:
   ~halo_mat(){}
   
   // Overloaded operators
-  inline const double operator()(const int i, const int j) const
+  inline double& operator()(const int i, const int j)
   {return array(i+xfdpts,j+yfdpts);}
   inline halo_mat& operator=(const arma::mat& eqmat)
   {array = eqmat; return *this;}
@@ -83,7 +83,7 @@ public:
 };
 
 class halo_cx_mat{
-
+  
   arma::cx_mat array;
   int Nx, Ny;
   int xrulepts, yrulepts;
@@ -101,11 +101,13 @@ public:
   ~halo_cx_mat(){}
   
   // Overloaded operators
-  inline dcomplex operator()(const int i, const int j) const
+  inline dcomplex& operator()(const int i, const int j)
   {return array(i+xfdpts,j+yfdpts);}
   inline halo_cx_mat& operator=(const arma::cx_mat& eqcmat)
   {array = eqcmat; return *this;}
-
+  inline halo_cx_mat& operator=(const dcomplex& eqcmat)
+  {array = eqcmat; return *this;}
+  
   inline void zeros() {array.zeros();}
   inline void set_value(const int i, const int j, const dcomplex value)
   {array(i+xfdpts, j+yfdpts) = value;}
