@@ -53,12 +53,12 @@ OPENBLAS_INCLUDE = /usr/includev
 OPENBLAS_LIBS    = /usr/lib
 
 ### PETSc
-PETSC_DIR = /opt/petsc/3.8.0/openmpi-gnu/debug/complex
-#PETSC_DIR = /opt/petsc/3.8.0/openmpi-gnu/optim/complex
+#PETSC_DIR = /opt/petsc/3.8.0/openmpi-gnu/debug/complex
+PETSC_DIR = /opt/petsc/3.8.0/openmpi-gnu/optim/complex
 
 ### SLEPc
-SLEPC_DIR = /opt/slepc/3.8.0/openmpi-gnu/debug/complex
-#SLEPC_DIR = /opt/slepc/3.8.0/openmpi-gnu/optim/complex
+#SLEPC_DIR = /opt/slepc/3.8.0/openmpi-gnu/debug/complex
+SLEPC_DIR = /opt/slepc/3.8.0/openmpi-gnu/optim/complex
 
 ### 
 INCLUDE = ${HELM_INCLUDE} #${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}

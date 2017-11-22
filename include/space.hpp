@@ -79,8 +79,12 @@ class space{
   // Function that print class members
   void print_grid_parameters();
 
-  // Set refractive index for the space
-  void set_refractive_index();
+  // Set fiber structure
+  void set_step_index_fiber(double r0, double n1, double n2);
+  void set_circular_honeycomb_fiber(double r0, int no_holes,
+				    double n0, double dn,
+				    double ddx, double ddy,
+				    int exponent=8);
   
 };
 

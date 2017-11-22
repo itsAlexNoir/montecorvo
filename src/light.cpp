@@ -1,14 +1,12 @@
-
 ////////////
 ////  light.cpp
 ////
 ////  Contains the class functions for the light class
 ////////////
-#include <slepceps.h>
 #include "light.hpp"
 
 light::light(space& grid, communicator& comm,
-	     double _wavel):
+	     double _wavel,int argc,char **argv):
   mygrid{&grid}, mycomm{&comm}, wavelength{_wavel},
   field(grid.get_Nx(),grid.get_Ny(),arma::fill::zeros)
 {
@@ -24,6 +22,44 @@ light::light(space& grid, communicator& comm,
   
   k0 = twopi / wavelength;
   
+  //
+  // Set up PETSC and SLEPC stuff for eigencalculation
+  //
+  PetscInt       Nlocal  = Nx * Ny;
+  PetscInt       Nglobal = Nxglobal * Nyglobal;
+  PetscInt       xrulepts = mygrid->get_xrulepts();
+  PetscInt       yrulepts = mygrid->get_yrulepts();
+  PetscInt       xfdpts = (xrulepts - 1)*0.5;
+  PetscInt       yfdpts = (yrulepts - 1)*0.5;
+  PetscErrorCode ierr;
+  
+  SlepcInitialize(&argc,&argv,(char*)0,NULL);
+  
+#if !defined(PETSC_USE_COMPLEX)
+  SETERRQ(PETSC_COMM_WORLD,1,"This example requires complex numbers");
+#endif
+
+  //
+  // -- Create PETSC matrix ---
+  
+  // Create the matrix that defines the eigensystem
+  ierr = MatCreate(PETSC_COMM_WORLD,&Hmat);
+  //ierr = MatSetSizes(Hmat,PETSC_DECIDE,PETSC_DECIDE,Nglobal,Nglobal);
+  ierr = MatSetSizes(Hmat,Nlocal,Nlocal,Nglobal,Nglobal);
+  ierr = MatSetType(Hmat, MATAIJ);
+  
+  ierr = MatSeqAIJSetPreallocation(Hmat, xrulepts+yrulepts, NULL);
+  ierr = MatMPIAIJSetPreallocation(Hmat, xrulepts + yrulepts, NULL, yrulepts, NULL);
+  ierr = MatSetFromOptions(Hmat);
+  //ierr = MatSetOption(Hmat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  ierr = MatSetUp(Hmat);
+  
+  // Create eigenvectors
+  ierr = MatCreateVecs(Hmat,NULL,&xr);
+  ierr = MatCreateVecs(Hmat,NULL,&xi);
+
+  // // Create Eigensolver object
+  ierr = EPSCreate(PETSC_COMM_WORLD,&eps);  
 }
 
 //////////////////////////////////////////////////
@@ -193,19 +229,14 @@ void light::apply_helmholtz()
 
 int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_modes)
 {
-  
-  Mat            Hmat;           /* problem matrix */
-  EPS            eps;         /* eigenproblem solver context */
   EPSType        type;
   PetscReal      error,tol,re,im;
   PetscScalar    kr,ki;
   PetscScalar    matelem;
-  Vec            xr,xi;
   PetscInt       Nlocal  = Nx * Ny;
   PetscInt       Nglobal = Nxglobal * Nyglobal;
   PetscInt       Istart,Iend,nev,maxit,its,nconv;
   PetscInt       II, JJ, nrow, ncol;
-  PetscErrorCode ierr;
   PetscInt       xrulepts = mygrid->get_xrulepts();
   PetscInt       yrulepts = mygrid->get_yrulepts();
   PetscInt       xfdpts = (xrulepts - 1)*0.5;
@@ -215,29 +246,14 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   int            iproc      = mycomm->get_iprocessor();
   int            ipx        = mycomm->get_ipx();
   int            ipy        = mycomm->get_ipy();
+  PetscErrorCode ierr;
   
-  SlepcInitialize(&argc,&argv,(char*)0,NULL);
-  
-#if !defined(PETSC_USE_COMPLEX)
-  SETERRQ(PETSC_COMM_WORLD,1,"This example requires complex numbers");
-#endif
-  
-  // Create the matrix that defines the eigensystem
-  ierr = MatCreate(PETSC_COMM_WORLD,&Hmat);CHKERRQ(ierr);
-  //ierr = MatSetSizes(Hmat,PETSC_DECIDE,PETSC_DECIDE,Nglobal,Nglobal);CHKERRQ(ierr);
-  ierr = MatSetSizes(Hmat,Nlocal,Nlocal,Nglobal,Nglobal);CHKERRQ(ierr);
-  ierr = MatSetType(Hmat, MATAIJ);
-  
-  ierr = MatSeqAIJSetPreallocation(Hmat, xrulepts+yrulepts, NULL);
-  ierr = MatMPIAIJSetPreallocation(Hmat, xrulepts + yrulepts, NULL, yrulepts, NULL);
-  ierr = MatSetFromOptions(Hmat);CHKERRQ(ierr);
-  //ierr = MatSetOption(Hmat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  ierr = MatSetUp(Hmat);CHKERRQ(ierr);
+  //-----------------------------------------------------
   
   ierr = MatGetOwnershipRange(Hmat,&Istart,&Iend);CHKERRQ(ierr);
-
-  //
-  // -- Create PETSC matrix ---
+  ierr = MatZeroEntries(Hmat);
+  ierr = VecZeroEntries(xr);
+  ierr = VecZeroEntries(xi);
   
   // Create matrix column vector,
   arma::cx_mat colvec(Nx,Ny,arma::fill::zeros);
@@ -305,23 +321,19 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   ierr = MatAssemblyBegin(Hmat,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(Hmat,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   //ierr = MatSetOption(Hmat,MAT_SYMMETRIC, PETSC_TRUE);CHKERRQ(ierr);
-
-  ierr = MatCreateVecs(Hmat,NULL,&xr);CHKERRQ(ierr);
-  ierr = MatCreateVecs(Hmat,NULL,&xi);CHKERRQ(ierr);
   
   // Create the eigensolver and set various options
   /*
     Create eigensolver context
   */
-  ierr = EPSCreate(PETSC_COMM_WORLD,&eps);CHKERRQ(ierr);
-  
   // Set operators. In this case, it is a standard eigenvalue problem
   ierr = EPSSetOperators(eps,Hmat,NULL);CHKERRQ(ierr);
   ierr = EPSSetProblemType(eps,EPS_HEP);CHKERRQ(ierr);
   //ierr = EPSSetType(eps,EPSARNOLDI);
-  //EPSSetWhichEigenpairs(eps,EPS_SMALLEST_REAL);
+  ierr = EPSSetWhichEigenpairs(eps,EPS_LARGEST_REAL);
   ierr = EPSSetTolerances(eps,1e-8,PETSC_DEFAULT);
   ierr = EPSSetDimensions(eps,num_eigen_modes,PETSC_DEFAULT,PETSC_DEFAULT);
+  
   // Set solver parameters at runtime
   ierr = EPSSetFromOptions(eps);CHKERRQ(ierr);
   
@@ -349,7 +361,7 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   
   // Open to file to save eigenenergies of the modes
   ofstream energyfile;
-  string filename = "energy_modes.dat";
+  string filename = "energy_modes_lambda_" + to_string(wavelength) + ".dat";
   if (mycomm->get_iprocessor()==0)
     energyfile.open(filename);
   
@@ -386,7 +398,7 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
       // Save eigen energies to file
       if (mycomm->get_iprocessor()==0)
       	energyfile << i << " " << double(re) << " " << double(im)
-		   << sqrt(double(re)) << " " << sqrt(double(im)) << endl; 
+		   << " " << sqrt(double(re)) << " " << sqrt(double(im)) << endl; 
     }
     
     ierr = PetscPrintf(PETSC_COMM_WORLD,"\n");CHKERRQ(ierr);
@@ -398,13 +410,6 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   
   // Close file
   energyfile.close();
-  
-  // Free work space
-  ierr = EPSDestroy(&eps);CHKERRQ(ierr);
-  ierr = MatDestroy(&Hmat);CHKERRQ(ierr);
-  ierr = VecDestroy(&xr);CHKERRQ(ierr);
-  ierr = VecDestroy(&xi);CHKERRQ(ierr);
-  ierr = SlepcFinalize();
   
   return ierr;
   

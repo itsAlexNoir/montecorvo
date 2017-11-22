@@ -8,6 +8,7 @@
 #ifndef ____LIGHT__
 #define ____LIGHT__
 
+#include <slepceps.h>
 #include "constants.hpp"
 //#include "params.hpp"
 #include "halo_array.hpp"
@@ -30,6 +31,12 @@ private:
   
   double wavelength;
   double k0;
+
+  // Helmholtz matrix (for eigencalculation)
+  Mat            Hmat;
+  Vec            xr,xi;
+  // Eigenproblem solver context
+  EPS            eps;
   // Coordinate arrays
   arma::cx_mat field;
   
@@ -40,14 +47,22 @@ private:
 public:
   // Constructor
   light(space& grid, communicator& comm,
-	double _wavel = 800.0);
+	double _wavel,int argc, char **argv);
   // Destructor
-  ~light(){}
+  ~light(){
+    PetscErrorCode ierr;
+    // Free PETSC's work space
+    ierr = EPSDestroy(&eps);
+    ierr = MatDestroy(&Hmat);
+    ierr = VecDestroy(&xr);
+    ierr = VecDestroy(&xi);
+    ierr = SlepcFinalize();
+  }
   
   // Functions to get / set the norm of the wavefunction
   double get_norm();
   void normalise();
-  double get_wavelength() const {return wavelength;}
+  double get_wavelength() const {cout << k0 << endl; return wavelength;}
   void set_wavelength(const double new_wave)
   {wavelength = new_wave; k0 = twopi / wavelength;}
   

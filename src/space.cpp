@@ -65,9 +65,26 @@ space::space(int _Nx, int _Ny, double _dx, double _dy,
   xfdcoeffs = xcoeff;
   yfdcoeffs = ycoeff;
 
-  // We set the refractive index of the medium
-  set_refractive_index();
+  // // Save gridpoints to file
+  // ofstream xptsfile;
+  // ofstream yptsfile;
   
+  // string filename;
+  // int iproc = mycomm->get_iprocessor();
+  // filename = "./gridpoints/xpts." + to_string(iproc) + ".dat";
+  // xptsfile.open(filename);
+  // filename = "./gridpoints/ypts." + to_string(iproc) + ".dat";
+  // yptsfile.open(filename);
+
+  // for(int ix=-xfdpts; ix<Nx+xfdpts; ix++)
+  //   xptsfile << ix << " " << xhalo_ax(ix) << endl;
+
+  // for(int iy=-yfdpts; iy<Ny+yfdpts; iy++)
+  //   yptsfile << iy << " " << yhalo_ax(iy) << endl;
+
+  // xptsfile.close();
+  // yptsfile.close();
+
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -93,18 +110,13 @@ void space::print_grid_parameters()
 
 ///////////////////////////////////////////////////////////////////
 
-void space::set_refractive_index()
+void space::set_step_index_fiber(double r0, double n1, double n2)
 {
   
   double rad {0.0};
-  double r0 {4.0};
-  double n1 {1.445};
-  double n2 {1.4378};
   
-  double ome {0.1};
-  
-  for(int ix=0; ix<Nx; ix++)
-    for(int iy=0; iy<Ny; iy++)
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
       {
   	rad = sqrt( x_ax(ix) * x_ax(ix) +
   		    y_ax(iy) * y_ax(iy));
@@ -112,25 +124,35 @@ void space::set_refractive_index()
   	  nfield(ix,iy) = n1;
   	else
   	  nfield(ix,iy) = n2;    
-      }
+      }  
+}
+
+///////////////////////////////////////////////////////////////////
+
+void space::set_circular_honeycomb_fiber(double r0, int no_holes,
+				  double n0, double dn,
+				  double ddx, double ddy,
+				  int exponent)
+{
   
-  // for(int ix=0; ix<Nx; ix++)
-  //   for(int iy=0; iy<Ny; iy++)
-  //     {
-  // 	rad = sqrt( x_ax(ix) * x_ax(ix) +
-  // 		    y_ax(iy) * y_ax(iy));
-  // 	if(abs(x_ax(ix)) <= r0  && abs(y_ax(iy))<=r0)
-  // 	  nfield(ix,iy) = n1;
-  // 	else
-  // 	  nfield(ix,iy) = n2;    
-  //     }
+  double argx, argy;  
+  double dtheta {twopi / no_holes};
+  arma::vec angholes = arma::linspace(0.0, twopi-dtheta,no_holes);
   
-  // for(int ix=0; ix<Nx; ix++)
-  //   for(int iy=0; iy<Ny; iy++)
-  //     {
-  // 	nfield(ix, iy) = 0.5 * ome * ome *
-  // 	  ( x_ax(ix) * x_ax(ix) + y_ax(iy) * y_ax(iy) );
-  //     }	
+  arma::vec x0 = r0 * arma::sin(angholes);
+  arma::vec y0 = r0 * arma::cos(angholes);
+  
+  for(int ih=0; ih<no_holes; ih++)
+    for(int iy=0; iy<Ny; iy++)
+      for(int ix=0; ix<Nx; ix++)
+	{
+	  argx = ( x_ax(ix) - x0(ih) ) / ddx;
+	  argy = ( y_ax(iy) - y0(ih) ) / ddy; 
+	  argx = pow(argx,exponent);
+	  argy = pow(argy,exponent);
+	  nfield(ix, iy) += n0 + dn * exp(-argx) * exp(-argy);
+	}
+  
 }
 
 ///////////////////////////////////////////////////////////////////
