@@ -110,6 +110,22 @@ void space::print_grid_parameters()
 
 ///////////////////////////////////////////////////////////////////
 
+double space::get_refractive_index(string material, double wavelength)
+{
+  double wavesq = wavelength * wavelength;
+  double nsq {0.0};
+  
+  if(material=="YAG")
+    nsq = 1.0 + 2.28200 * wavesq / (wavesq - 0.01185) +
+      3.27644 * wavesq / (wavesq - 282.734);
+  else
+    cout << "No Sellmeier formula for this material" << endl;
+  
+  return sqrt(nsq);
+}
+
+///////////////////////////////////////////////////////////////////
+
 void space::set_step_index_fiber(double r0, double n1, double n2)
 {
   
@@ -130,9 +146,9 @@ void space::set_step_index_fiber(double r0, double n1, double n2)
 ///////////////////////////////////////////////////////////////////
 
 void space::set_circular_honeycomb_fiber(double r0, int no_holes,
-				  double n0, double dn,
-				  double ddx, double ddy,
-				  int exponent)
+					 double n0, double dn,
+					 double ddx, double ddy,
+					 int exponent)
 {
   
   double argx, argy;  
@@ -152,6 +168,114 @@ void space::set_circular_honeycomb_fiber(double r0, int no_holes,
 	  argy = pow(argy,exponent);
 	  nfield(ix, iy) += n0 + dn * exp(-argx) * exp(-argy);
 	}
+  
+}
+
+///////////////////////////////////////////////////////////////////
+
+void space::read_shot_coordinates(string filename, int nx, int ny,
+				  double dx, double dy)
+{
+  
+  shots.Nx  = nx;
+  shots.Ny  = ny;
+  shots.dx  = dx;
+  shots.dy  = dy;
+  
+  ifstream shotsfile(filename,ios_base::in);
+  arma::Mat<int> binshots(shots.Nx, shots.Ny,arma::fill::zeros); 
+  
+  // Read positions from file
+  if(shotsfile.is_open())
+    {
+      for(int iy=0; iy<shots.Ny; iy++)
+	for(int ix=0; ix<shots.Nx; ix++)
+	  shotsfile >> binshots(ix,iy);
+      
+      shotsfile.close();
+    }
+  else
+    cout << "Unable to open file";
+  
+  shots.Nc = arma::accu(binshots);
+  shots.coords = new double*[shots.Nc];
+  for(int ic=0; ic<shots.Nc; ic++)
+    shots.coords[ic] = new double[2];
+  
+  // Write shot positions
+  ofstream shotcoordsfile("shotsfile.txt",ofstream::out);
+  double incx = 0.0;
+  int ic = -1;
+  for(int iy=0; iy<shots.Ny; iy++)
+    {
+      for(int ix=0; ix<shots.Nx; ix++)
+	if(binshots(ix, iy) == 1)
+	  {
+	    ic += 1;
+	    shots.coords[ic][0] = (- double(shots.Nx) * 0.5 + double(ix) )
+	      * shots.dx + incx;
+	    shots.coords[ic][1] = (- double(shots.Ny) * 0.5 + double(iy) )
+	      * shots.dy;
+	    
+	    shotcoordsfile << shots.coords[ic][0] << " " << shots.coords[ic][1] << endl;
+	  }
+      incx += shots.dx * 0.5;
+      if(incx==shots.dx) incx=0.0;    
+    }
+  
+  shotcoordsfile.close();
+}
+
+///////////////////////////////////////////////////////////////////
+
+void space::set_honeycomb_fiber(string filename,
+				double n0, double dn,
+				int Nshx, int Nshy,
+				double deltashx, double deltashy,
+				double ddx, double ddy,
+				int exponent)
+{
+  
+  double rad {0.0};
+  double argx, argy;  
+  // Get shot's coordinates
+  read_shot_coordinates(filename, Nshx, Nshy,
+			deltashx, deltashy);
+  
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
+      {
+	nfield(ix, iy) = n0;
+	for(int ih=0; ih<shots.Nc; ih++)
+	  {
+	    rad = sqrt(x_ax(ix) * x_ax(ix)
+		       + y_ax(iy) * y_ax(iy) );
+	    
+	    argx = ( x_ax(ix) - shots.coords[ih][0] ) / ddx;
+	    argy = ( y_ax(iy) - shots.coords[ih][1] ) / ddy; 
+	    argx = pow(argx,exponent);
+	    argy = pow(argy,exponent);
+	    nfield(ix, iy) += dn * exp(-argx) * exp(-argy);
+	    
+	  }
+	if(rad > 45.0)
+	  nfield(ix, iy) = n0 - 0.002;
+      }
+  
+
+  // Save eigenvectors to file
+  ofstream profilefile;
+  filename = "field_dist/fiber_profile.n0."
+    + to_string(n0) + "."
+    + to_string(mycomm->get_iprocessor()) + ".dat";
+  profilefile.open(filename);
+  
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
+      profilefile << nfield(ix, iy) << endl;
+  
+  // Close file
+  profilefile.close();
   
 }
 

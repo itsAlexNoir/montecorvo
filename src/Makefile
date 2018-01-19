@@ -5,7 +5,7 @@
 #####################################################
 # Include settings for specific architecture
 
-include sys/zahir_gnu.make
+include sys/ballard_gnu.make
 
 TARGET = ${BIN}/helmholtz.exec
 VPATH  = ${INCLUDE}

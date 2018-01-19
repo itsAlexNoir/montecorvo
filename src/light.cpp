@@ -231,12 +231,13 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
 {
   EPSType        type;
   PetscReal      error,tol,re,im;
-  PetscScalar    kr,ki;
+  PetscScalar    kr,ki, *eigvec;
   PetscScalar    matelem;
   PetscInt       Nlocal  = Nx * Ny;
   PetscInt       Nglobal = Nxglobal * Nyglobal;
   PetscInt       Istart,Iend,nev,maxit,its,nconv;
   PetscInt       II, JJ, nrow, ncol;
+  PetscInt       LocalVecSize;
   PetscInt       xrulepts = mygrid->get_xrulepts();
   PetscInt       yrulepts = mygrid->get_yrulepts();
   PetscInt       xfdpts = (xrulepts - 1)*0.5;
@@ -405,11 +406,27 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   }
   
   // Save eigenvectors to file
-  // for(int ix=0; ix<Nx; ixx)    
-  //   cout << PetscRealPart(xr[ix]) << PetscRealPart(xi[ix]) << endl;
+  int selected_mode = 0;
+  ierr = EPSGetEigenpair(eps,selected_mode,&kr,&ki,xr,xi);CHKERRQ(ierr);
+  ofstream modefile;
+  filename = "field_dist/mode_no." + to_string(selected_mode)
+    + ".wavelength." + to_string(wavelength) + "."
+    + to_string(mycomm->get_iprocessor()) + ".dat";
+  modefile.open(filename);
+  
+  // Get eigenvector's values from Petsc Vec type
+  ierr = VecGetLocalSize(xr, &LocalVecSize);
+  if(LocalVecSize!=Nlocal) 
+    mycomm->parallel_stop("Local size of eigen vec not equal as local grid size!");
+  
+  ierr = VecGetArray(xr, &eigvec);
+  for(int ii=0; ii<Nlocal; ii++)    
+    modefile << PetscRealPart(eigvec[ii]) << " "
+	     << PetscImaginaryPart(eigvec[ii]) << endl;
   
   // Close file
   energyfile.close();
+  modefile.close();
   
   return ierr;
   

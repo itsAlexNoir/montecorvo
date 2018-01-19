@@ -50,10 +50,12 @@ OPENBLAS_INCLUDE = ${OPENBLAS_ROOT}/include
 OPENBLAS_LIBS    = ${OPENBLAS_ROOT}/lib
 
 ### PETSc
-PETSC_DIR = /opt/petsc/3.7.7/mpich-gnu/complex
+#PETSC_DIR = /opt/petsc/3.8.2/mpich-gnu-7/debug/complex
+PETSC_DIR = /opt/petsc/3.8.2/mpich-gnu-7/optim/complex
 
 ### SLEPc
-SLEPC_DIR = /opt/slepc/3.7.4/mpich-gnu/complex
+#SLEPC_DIR = /opt/slepc/3.8.1/mpich-gnu-7/debug/complex
+SLEPC_DIR = /opt/slepc/3.8.1/mpich-gnu-7/optim/complex
 
 ### 
 INCLUDE = ${HELM_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}

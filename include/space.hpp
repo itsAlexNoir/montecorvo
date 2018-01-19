@@ -13,9 +13,18 @@
 #include "halo_array.hpp"
 #include "communicator.hpp"
 
+struct shots_strc{
+  int Nx;
+  int Ny;
+  double dx;
+  double dy;
+  int Nc;
+  double** coords;
+};
+  
 class space{
   
- private:
+private:
   // Communicator for parallel stuff
   const communicator *mycomm;
   
@@ -39,7 +48,8 @@ class space{
   halo_vec xhalo_ax;
   halo_vec yhalo_ax;
   arma::mat nfield;
-
+  shots_strc shots;
+  
   halo1D_mat xfdcoeffs;
   halo1D_mat yfdcoeffs;
 
@@ -49,13 +59,21 @@ class space{
   double xhalomin, xhalomax;
   double yhalomin, yhalomax;
   
- public:
+  void read_shot_coordinates(string filename, int nx, int ny,
+			     double dx, double dy);
+  
+public:
   // Constructor
   space(int nx, int ny, double dx, double dy,
 	int xrulepts, int yrulepts,
 	const communicator& comm);
   // Destructor
-  ~space(){}
+  ~space(){
+    for(int ic=0; ic<shots.Nc; ic++)
+      delete[] shots.coords[ic];
+    
+    delete[] shots.coords;
+  }
   
   // Functions that returns private values
   int get_Nx() const;
@@ -80,12 +98,19 @@ class space{
   void print_grid_parameters();
 
   // Set fiber structure
+  double get_refractive_index(string material, double wavelength);
   void set_step_index_fiber(double r0, double n1, double n2);
   void set_circular_honeycomb_fiber(double r0, int no_holes,
 				    double n0, double dn,
 				    double ddx, double ddy,
 				    int exponent=8);
   
+  void set_honeycomb_fiber(string filename,
+			   double n0, double dn,
+			   int Nshx, int Nshy,
+			   double deltashx, double deltashy,
+			   double ddx, double ddy,
+			   int exponent);  
 };
 
 
