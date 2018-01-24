@@ -241,7 +241,7 @@ void space::set_honeycomb_fiber(string filename,
   double width_abs = xmax - rabs;
   
   double rad {0.0};
-  double argx, argy, abs_arg;  
+  double argx, argy, arg_abs;  
   // Get shot's coordinates
   read_shot_coordinates(filename, Nshx, Nshy,
 			deltashx, deltashy);
@@ -267,7 +267,7 @@ void space::set_honeycomb_fiber(string filename,
 	    
 	  }
 	if(rad > rabs)
-	  nfield(ix, iy) -= Im * n1 * abs_arg;
+	  nfield(ix, iy) -= Im * n1 * arg_abs;
       }
   
 

@@ -329,7 +329,7 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   */
   // Set operators. In this case, it is a standard eigenvalue problem
   ierr = EPSSetOperators(eps,Hmat,NULL);CHKERRQ(ierr);
-  ierr = EPSSetProblemType(eps,EPS_HEP);CHKERRQ(ierr);
+  ierr = EPSSetProblemType(eps,EPS_NHEP);CHKERRQ(ierr);
   //ierr = EPSSetType(eps,EPSARNOLDI);
   ierr = EPSSetWhichEigenpairs(eps,EPS_LARGEST_REAL);
   ierr = EPSSetTolerances(eps,1e-8,PETSC_DEFAULT);

@@ -47,15 +47,15 @@ int main(int argc,char **argv){
   double delta_wavelength {1e-3};
   int num_modes           {4};
   
-  string shots_filename   {"3capas-core19-codigo.txt"};
+  string shots_filename   {"5capas-core1-codigo.txt"};
   double n0               {0.0};
   double deltan           {-0.004};
   int Nshx                {11};
   int Nshy                {11};
   double delta_shx        {6.0};
-  double delta_shy        {6.0};
-  double sigma_shx        {1.0};
-  double sigma_shy        {3.0};
+  double delta_shy        {5.0};
+  double sigma_shx        {0.5};
+  double sigma_shy        {2.5};
   
   // int nholes              {15};
   // double holes_radius     {15.0};

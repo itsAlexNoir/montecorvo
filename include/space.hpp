@@ -47,7 +47,7 @@ private:
   arma::vec y_ax;
   halo_vec xhalo_ax;
   halo_vec yhalo_ax;
-  arma::mat nfield;
+  arma::cx_mat nfield;
   shots_strc shots;
   
   halo1D_mat xfdcoeffs;
@@ -91,8 +91,8 @@ public:
   
   double get_xfdcoeffs(const int i, const int j);
   double get_yfdcoeffs(const int i, const int j);
-  double get_nfield(const int i, const int j);
-  const arma::mat& get_nfield() const;
+  dcomplex get_nfield(const int i, const int j);
+  const arma::cx_mat& get_nfield() const;
   
   // Function that print class members
   void print_grid_parameters();
@@ -135,10 +135,10 @@ inline double space::get_xfdcoeffs(const int i, const int j)
 inline double space::get_yfdcoeffs(const int i, const int j)
 { return yfdcoeffs(i, j);}
 
-inline double space::get_nfield(const int i, const int j)
+inline dcomplex space::get_nfield(const int i, const int j)
 { return nfield(i, j);}
 
-inline const arma::mat& space::get_nfield() const { return nfield;}
+inline const arma::cx_mat& space::get_nfield() const { return nfield;}
 
 
 #endif // ____SPACE__ //
