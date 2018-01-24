@@ -235,9 +235,13 @@ void space::set_honeycomb_fiber(string filename,
 				double ddx, double ddy,
 				int exponent)
 {
+
+  double n1 = 1.44;
+  double rabs = 45.0;
+  double width_abs = xmax - rabs;
   
   double rad {0.0};
-  double argx, argy;  
+  double argx, argy, abs_arg;  
   // Get shot's coordinates
   read_shot_coordinates(filename, Nshx, Nshy,
 			deltashx, deltashy);
@@ -245,11 +249,15 @@ void space::set_honeycomb_fiber(string filename,
   for(int iy=0; iy<Ny; iy++)
     for(int ix=0; ix<Nx; ix++)
       {
+	rad = sqrt(x_ax(ix) * x_ax(ix)
+		   + y_ax(iy) * y_ax(iy) );
+	arg_abs = (rad - rabs) / width_abs;
+	arg_abs = pow(arg_abs,16);
+	
 	nfield(ix, iy) = n0;
+	
 	for(int ih=0; ih<shots.Nc; ih++)
 	  {
-	    rad = sqrt(x_ax(ix) * x_ax(ix)
-		       + y_ax(iy) * y_ax(iy) );
 	    
 	    argx = ( x_ax(ix) - shots.coords[ih][0] ) / ddx;
 	    argy = ( y_ax(iy) - shots.coords[ih][1] ) / ddy; 
@@ -258,8 +266,8 @@ void space::set_honeycomb_fiber(string filename,
 	    nfield(ix, iy) += dn * exp(-argx) * exp(-argy);
 	    
 	  }
-	if(rad > 45.0)
-	  nfield(ix, iy) = n0 - 0.002;
+	if(rad > rabs)
+	  nfield(ix, iy) -= Im * n1 * abs_arg;
       }
   
 
