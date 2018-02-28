@@ -5,7 +5,7 @@
 #####################################################
 # Include settings for specific architecture
 
-include sys/ballard_gnu.make
+include sys/aleph.make
 
 TARGET = ${BIN}/spectral_scan.exec
 VPATH  = ${INCLUDE}
@@ -22,11 +22,11 @@ include classes.lst
 ##             Module dependencies                 ##
 #####################################################
 
-params.o:
+params.o: 
 communicator.o:
 fiber.o: communicator.o
 light.o: communicator.o fiber.o chkopts
-spectralscan.o: fiber.o
+spectralscan.o: params.o fiber.o communcator.o light.o 
 
 #####################################################
 ##             		Rules                      ##

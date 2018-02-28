@@ -6,7 +6,6 @@
 #define ____PARAMS__
 
 #include <iostream>
-#include "constants.hpp"
 #include "boost/variant.hpp"
 
 typedef boost::variant<std::string, int, double> input_type;
