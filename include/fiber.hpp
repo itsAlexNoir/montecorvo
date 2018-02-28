@@ -1,15 +1,13 @@
-/////////////////////
-//// space.h
-////
-//// Declaration of the kspace class
-////
-////////////////////
+/*!
+  @file space.hpp
 
-#ifndef ____SPACE__
-#define ____SPACE__
+  @brief Declaration of the fiber class.
+*/
+
+#ifndef ____FIBER__
+#define ____FIBER__
 
 #include "constants.hpp"
-//#include "params.hpp"
 #include "halo_array.hpp"
 #include "communicator.hpp"
 
@@ -22,7 +20,7 @@ struct shots_strc{
   double** coords;
 };
   
-class space{
+class fiber{
   
 private:
   // Communicator for parallel stuff
@@ -47,12 +45,14 @@ private:
   arma::vec y_ax;
   halo_vec xhalo_ax;
   halo_vec yhalo_ax;
-  arma::cx_mat nfield;
+  arma::mat nfield;
+  arma::mat imag_nfield;
   shots_strc shots;
   
   halo1D_mat xfdcoeffs;
   halo1D_mat yfdcoeffs;
-
+  bool absorption_on;
+  
   double xmax, ymax;
   double xminlocal, xmaxlocal;
   double yminlocal, ymaxlocal;
@@ -64,11 +64,11 @@ private:
   
 public:
   // Constructor
-  space(int nx, int ny, double dx, double dy,
+  fiber(int nx, int ny, double dx, double dy,
 	int xrulepts, int yrulepts,
-	const communicator& comm);
+	bool abs_on, const communicator& comm);
   // Destructor
-  ~space(){
+  ~fiber(){
     for(int ic=0; ic<shots.Nc; ic++)
       delete[] shots.coords[ic];
     
@@ -82,6 +82,8 @@ public:
   double get_dy() const;
   double get_xmax() const;
   double get_ymax() const;
+  void absorption_switch(bool state) {absorption_on = state;}
+  bool get_absorption_state() {return absorption_on;}
   
   const arma::vec get_x_ax() const;
   const arma::vec get_y_ax() const;
@@ -91,8 +93,10 @@ public:
   
   double get_xfdcoeffs(const int i, const int j);
   double get_yfdcoeffs(const int i, const int j);
-  dcomplex get_nfield(const int i, const int j);
-  const arma::cx_mat& get_nfield() const;
+  double get_nfield(const int i, const int j);
+  double get_imag_nfield(const int i, const int j);
+  const arma::mat& get_nfield() const;
+  const arma::mat& get_imag_nfield() const;
   
   // Function that print class members
   void print_grid_parameters();
@@ -111,34 +115,40 @@ public:
 			   double deltashx, double deltashy,
 			   double ddx, double ddy,
 			   int exponent);  
+  
+  void set_fiber_cladding(double n1, double rclad);
+  void set_fiber_absorption(double n1, double rclad, int exponent);
 };
 
 
-inline int space::get_Nx() const {return Nx;}
-inline int space::get_Ny() const {return Ny;}
+inline int fiber::get_Nx() const {return Nx;}
+inline int fiber::get_Ny() const {return Ny;}
 
-inline double space::get_dx() const {return dx;}
-inline double space::get_dy() const {return dy;}
+inline double fiber::get_dx() const {return dx;}
+inline double fiber::get_dy() const {return dy;}
 
-inline const arma::vec space::get_x_ax() const {return x_ax;}
-inline const arma::vec space::get_y_ax() const {return y_ax;}
+inline const arma::vec fiber::get_x_ax() const {return x_ax;}
+inline const arma::vec fiber::get_y_ax() const {return y_ax;}
 
-inline double space::get_xmax() const {return xmax;}
-inline double space::get_ymax() const {return ymax;}
+inline double fiber::get_xmax() const {return xmax;}
+inline double fiber::get_ymax() const {return ymax;}
 
-inline int space::get_xrulepts() const {return xrulepts;}
-inline int space::get_yrulepts() const {return yrulepts;}
+inline int fiber::get_xrulepts() const {return xrulepts;}
+inline int fiber::get_yrulepts() const {return yrulepts;}
 
-inline double space::get_xfdcoeffs(const int i, const int j)
+inline double fiber::get_xfdcoeffs(const int i, const int j)
 { return xfdcoeffs(i, j);}
 
-inline double space::get_yfdcoeffs(const int i, const int j)
+inline double fiber::get_yfdcoeffs(const int i, const int j)
 { return yfdcoeffs(i, j);}
 
-inline dcomplex space::get_nfield(const int i, const int j)
+inline double fiber::get_nfield(const int i, const int j)
 { return nfield(i, j);}
+inline double fiber::get_imag_nfield(const int i, const int j)
+{ return imag_nfield(i, j);}
 
-inline const arma::cx_mat& space::get_nfield() const { return nfield;}
+inline const arma::mat& fiber::get_nfield() const { return nfield;}
+inline const arma::mat& fiber::get_imag_nfield() const { return imag_nfield;}
 
 
-#endif // ____SPACE__ //
+#endif // ____FIBER__ //

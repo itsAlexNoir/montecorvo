@@ -1,24 +1,32 @@
-////////////
-////  space.cpp
-////
-////  Contains the class functions for the kspace class
-////////////
+/*! \file fiber.cpp
+  \brief Definitions for the class fiber.
+
+    File containing the definitions of the class fiber.
+*/
 
 #include <iostream>
 #include <math.h>
-#include "space.hpp"
+#include "fiber.hpp"
 
 void fdweights(double xi, arma::vec& x, int n, int m, arma::mat& c);
 
-space::space(int _Nx, int _Ny, double _dx, double _dy,
-	     int _xrulepts, int _yrulepts, const communicator& comm):
+/*! \class fiber
+    \brief Fiber class.
+
+    A more detailed class description.
+*/
+fiber::fiber(int _Nx, int _Ny, double _dx, double _dy,
+	     int _xrulepts, int _yrulepts, bool abs_on,
+	     const communicator& comm):
   Nx{_Nx}, Ny{_Ny}, dx{_dx}, dy{_dy},
   xrulepts{_xrulepts}, yrulepts{_yrulepts},
+  absorption_on{abs_on},
   mycomm{&comm},
   x_ax(_Nx,arma::fill::zeros), y_ax(Ny,arma::fill::zeros),
   xhalo_ax(_Nx,_xrulepts), yhalo_ax(_Ny,_yrulepts),
   xfdcoeffs(1,3,_xrulepts), yfdcoeffs(1,3,_yrulepts),
-  nfield(_Nx,_Ny,arma::fill::zeros)
+  nfield(_Nx,_Ny,arma::fill::zeros),
+  imag_nfield(_Nx,_Ny,arma::fill::zeros)
 {
 
   // Number of half points of the FD rule
@@ -89,7 +97,7 @@ space::space(int _Nx, int _Ny, double _dx, double _dy,
 
 ///////////////////////////////////////////////////////////////////
 
-void space::print_grid_parameters()
+void fiber::print_grid_parameters()
 {
   cout << endl;
   cout << "----- Grid parameters -------------------------------------------------" << endl;
@@ -110,7 +118,7 @@ void space::print_grid_parameters()
 
 ///////////////////////////////////////////////////////////////////
 
-double space::get_refractive_index(string material, double wavelength)
+double fiber::get_refractive_index(string material, double wavelength)
 {
   double wavesq = wavelength * wavelength;
   double nsq {0.0};
@@ -126,7 +134,7 @@ double space::get_refractive_index(string material, double wavelength)
 
 ///////////////////////////////////////////////////////////////////
 
-void space::set_step_index_fiber(double r0, double n1, double n2)
+void fiber::set_step_index_fiber(double r0, double n1, double n2)
 {
   
   double rad {0.0};
@@ -145,7 +153,7 @@ void space::set_step_index_fiber(double r0, double n1, double n2)
 
 ///////////////////////////////////////////////////////////////////
 
-void space::set_circular_honeycomb_fiber(double r0, int no_holes,
+void fiber::set_circular_honeycomb_fiber(double r0, int no_holes,
 					 double n0, double dn,
 					 double ddx, double ddy,
 					 int exponent)
@@ -173,7 +181,7 @@ void space::set_circular_honeycomb_fiber(double r0, int no_holes,
 
 ///////////////////////////////////////////////////////////////////
 
-void space::read_shot_coordinates(string filename, int nx, int ny,
+void fiber::read_shot_coordinates(string filename, int nx, int ny,
 				  double dx, double dy)
 {
   
@@ -181,7 +189,7 @@ void space::read_shot_coordinates(string filename, int nx, int ny,
   shots.Ny  = ny;
   shots.dx  = dx;
   shots.dy  = dy;
-  
+
   ifstream shotsfile(filename,ios_base::in);
   arma::Mat<int> binshots(shots.Nx, shots.Ny,arma::fill::zeros); 
   
@@ -203,7 +211,7 @@ void space::read_shot_coordinates(string filename, int nx, int ny,
     shots.coords[ic] = new double[2];
   
   // Write shot positions
-  ofstream shotcoordsfile("shotsfile.txt",ofstream::out);
+  ofstream shotcoordsfile("shotsfile.dat",ofstream::out);
   double incx = 0.0;
   int ic = -1;
   for(int iy=0; iy<shots.Ny; iy++)
@@ -214,7 +222,7 @@ void space::read_shot_coordinates(string filename, int nx, int ny,
 	    ic += 1;
 	    shots.coords[ic][0] = (- double(shots.Nx) * 0.5 + double(ix) )
 	      * shots.dx + incx;
-	    shots.coords[ic][1] = (- double(shots.Ny) * 0.5 + double(iy) )
+	    shots.coords[ic][1] = (- double(shots.Ny - 1) * 0.5 + double(iy) )
 	      * shots.dy;
 	    
 	    shotcoordsfile << shots.coords[ic][0] << " " << shots.coords[ic][1] << endl;
@@ -228,7 +236,7 @@ void space::read_shot_coordinates(string filename, int nx, int ny,
 
 ///////////////////////////////////////////////////////////////////
 
-void space::set_honeycomb_fiber(string filename,
+void fiber::set_honeycomb_fiber(string filename,
 				double n0, double dn,
 				int Nshx, int Nshy,
 				double deltashx, double deltashy,
@@ -236,24 +244,14 @@ void space::set_honeycomb_fiber(string filename,
 				int exponent)
 {
 
-  double n1 = 1.44;
-  double rabs = 45.0;
-  double width_abs = xmax - rabs;
-  
-  double rad {0.0};
-  double argx, argy, arg_abs;  
+  double argx, argy;  
   // Get shot's coordinates
   read_shot_coordinates(filename, Nshx, Nshy,
 			deltashx, deltashy);
   
   for(int iy=0; iy<Ny; iy++)
     for(int ix=0; ix<Nx; ix++)
-      {
-	rad = sqrt(x_ax(ix) * x_ax(ix)
-		   + y_ax(iy) * y_ax(iy) );
-	arg_abs = (rad - rabs) / width_abs;
-	arg_abs = pow(arg_abs,16);
-	
+      {	
 	nfield(ix, iy) = n0;
 	
 	for(int ih=0; ih<shots.Nc; ih++)
@@ -266,11 +264,9 @@ void space::set_honeycomb_fiber(string filename,
 	    nfield(ix, iy) += dn * exp(-argx) * exp(-argy);
 	    
 	  }
-	if(rad > rabs)
-	  nfield(ix, iy) -= Im * n1 * arg_abs;
       }
   
-
+  
   // Save eigenvectors to file
   ofstream profilefile;
   filename = "field_dist/fiber_profile.n0."
@@ -289,26 +285,64 @@ void space::set_honeycomb_fiber(string filename,
 
 ///////////////////////////////////////////////////////////////////
 
-//----------------------------------------------------------------------------
-//
-//  SUBROUTINE fdweights
-//
-///> \brief Create finite-difference weights.
-///> \details Create coefficients to be used for
-///> finite-difference rules.
-///> Reference:
-///> Generation of Finite Difference Formulas on Arbitrarily
-///> Spaced Grids, Bengt Fornberg,
-///> Mathematics of compuation, 51, 184, 1988, 699-706
-///
-///> \param[in] xi Location at which approximations are to be accurate (Central grid point).
-///> \param[in] x Grid point locations x(0:n).
-///> \param[in] n Number of grid points. Also, order of the finite-difference rule.
-///> \param[in] m Order of the highest derivative (it includes 0th-order derivative).
-///> \param[out] Finite-difference coefficients.
-///
-///----------------------------------------------------------------------------
+void fiber::set_fiber_cladding(double n1, double rclad)
+{
+  
+  double rad {0.0};
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
+      {
+	rad = sqrt(x_ax(ix) * x_ax(ix)
+		   + y_ax(iy) * y_ax(iy) );
+	
+	if(rad > rclad)
+	  nfield(ix, iy) = n1;
+      }
+  
+}
 
+void fiber::set_fiber_absorption(double n1, double rclad, int exponent)
+{
+  
+  double rad {0.0};
+  double arg_abs;
+  double width_abs = xmax - rclad;
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
+      {
+	rad = sqrt(x_ax(ix) * x_ax(ix)
+		   + y_ax(iy) * y_ax(iy) );
+	arg_abs = (rad - rclad) / width_abs;
+	arg_abs = pow(arg_abs,exponent);
+	
+	if(rad > rclad)
+	  imag_nfield(ix, iy) = n1 * arg_abs;
+	
+      }
+}
+
+///////////////////////////////////////////////////////////////////
+
+/*!----------------------------------------------------------------------------
+  
+  @function fdweights
+  
+  @brief Create finite-difference weights.
+  @details Create coefficients to be used for
+  finite-difference rules.
+  Reference:
+  Generation of Finite Difference Formulas on Arbitrarily
+  Spaced Grids, Bengt Fornberg,
+  Mathematics of compuation, 51, 184, 1988, 699-706
+  
+  @param[in] xi Location at which approximations are to be accurate (Central grid point).
+  @param[in] x Grid point locations x(0:n).
+  @param[in] n Number of grid points. Also, order of the finite-difference rule.
+  @param[in] m Order of the highest derivative (it includes 0th-order derivative).
+  @param[out] Finite-difference coefficients.
+  
+  ----------------------------------------------------------------------------
+*/
 void fdweights(double xi, arma::vec& x, int n, int m, arma::mat& c)
 {  
   

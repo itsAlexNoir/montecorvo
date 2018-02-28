@@ -5,7 +5,7 @@
 ////////////
 #include "light.hpp"
 
-light::light(space& grid, communicator& comm,
+light::light(fiber& grid, communicator& comm,
 	     double _wavel,int argc,char **argv):
   mygrid{&grid}, mycomm{&comm}, wavelength{_wavel},
   field(grid.get_Nx(),grid.get_Ny(),arma::fill::zeros)
@@ -207,6 +207,11 @@ void light::apply_helmholtz()
   // and set it to zero
   halofield.zeros();
   
+  arma::mat n0 = mygrid->get_nfield();
+  arma::mat n1 = mygrid->get_imag_nfield();
+  //arma::mat n0(mygrid->get_nfield().memptr(), Nx, Ny, false, true);
+  //arma::mat n1(mygrid->get_imag_nfield().memptr(), Nx, Ny, false, true); 
+  
   // Copy data from field to halo halofield matrices
   arma::cx_mat lapfield(Nx,Ny,arma::fill::zeros);
   
@@ -218,8 +223,14 @@ void light::apply_helmholtz()
   // Apply potential
   for(int iy=0; iy<Ny; iy++)
     for(int ix=0; ix<Nx; ix++)
-      lapfield(ix, iy) += mygrid->get_nfield(ix, iy) * mygrid->get_nfield(ix, iy) *
-  	k0 * k0 * field(ix, iy);
+      lapfield(ix, iy) += n0(ix, iy) * n0(ix, iy)
+	* k0 * k0 * field(ix, iy);
+  
+  if(mygrid->get_absorption_state())
+    for(int iy=0; iy<Ny; iy++)
+      for(int ix=0; ix<Nx; ix++)
+	lapfield(ix, iy) -= Im * n1(ix, iy) * n1(ix, iy)
+	  * k0 * k0 * field(ix, iy);
   
   field = lapfield;
   
@@ -310,7 +321,7 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   	for(int k=0; k<indxvec.size(); k++)
   	  {
   	    nrow  = indxvec(k);
-  	    indxpair = ind2sub( size(colvec), nrow );
+  	    indxpair = arma::ind2sub( arma::size(colvec), nrow );
   	    matelem = colvec(indxpair(0),indxpair(1));
   	    II = iproc * Nlocal + nrow;
   	    JJ = iproc * Nlocal + ncol;
@@ -329,7 +340,8 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   */
   // Set operators. In this case, it is a standard eigenvalue problem
   ierr = EPSSetOperators(eps,Hmat,NULL);CHKERRQ(ierr);
-  ierr = EPSSetProblemType(eps,EPS_NHEP);CHKERRQ(ierr);
+  ierr = EPSSetProblemType(eps,EPS_HEP);CHKERRQ(ierr);
+  //ierr = EPSSetProblemType(eps,EPS_NHEP);CHKERRQ(ierr);
   //ierr = EPSSetType(eps,EPSARNOLDI);
   ierr = EPSSetWhichEigenpairs(eps,EPS_LARGEST_REAL);
   ierr = EPSSetTolerances(eps,1e-8,PETSC_DEFAULT);
@@ -406,7 +418,7 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   }
   
   // Save eigenvectors to file
-  int selected_mode = 0;
+  PetscInt selected_mode = 0;
   ierr = EPSGetEigenpair(eps,selected_mode,&kr,&ki,xr,xi);CHKERRQ(ierr);
   ofstream modefile;
   filename = "field_dist/mode_no." + to_string(selected_mode)

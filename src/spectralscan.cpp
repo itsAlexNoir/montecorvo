@@ -1,21 +1,32 @@
-////////////////////////////////////////////
-///////////      Helmholtz.cpp       ///////
-//////////      Main program         ///////
-////////////////////////////////////////////
-
+/*!
+  @file spectralscan.cpp
+  \brief Program Performing an scan of the 
+  propagation constant over a spectral range.
+*/
 #include "constants.hpp"
 #include "communicator.hpp"
-//#include "params.hpp"
-#include "space.hpp"
+#include "params.hpp"
+#include "fiber.hpp"
 #include "light.hpp"
 
 int main(int argc,char **argv){
 
+  /// Read parameters for this calculation
+  if(argc<1)
+    {
+      cout << "You must provide an input file to the program." << endl;
+      cout << "Aborting program..." << endl;
+    } 
+  input myinput(argv[1]);
+
+  int nprocsx = myinput.read_integer("nprocsx", 1);
+  int nprocsy = myinput.read_integer("nprocsy", 1);
+  
   ///////////////////////////////////////////////////////////////////////
   // Initialise communications between processors
   ///////////////////////////////////////////////////////////////////////
   
-  communicator comm(argc, argv, 1, 15);
+  communicator comm(argc, argv, nprocsx, nprocsy);
   
   // Print starting date
   auto point_time = chrono::system_clock::now();
@@ -26,39 +37,32 @@ int main(int argc,char **argv){
   ///////////////////////////////////////////////////////////////////////
   // Set main calculation parameters
   ///////////////////////////////////////////////////////////////////////
+  
+  int Nx                  = myinput.read_integer("Nx", 100);
+  int Ny                  = myinput.read_integer("Ny", 100);
+  int rulepts             = myinput.read_integer("rulepts", 5);
+  
+  double dx               = myinput.read_double("dx", 0.2);
+  double dy               = myinput.read_double("dy", 0.2);
 
-  //int Nx{401};
-  // int Nx{35};
-  // int Ny {501};
-  int Ny{35};
-  int Nx {501};
-  
-  //int Nx{27};
-  //int Ny{301};
-  
-  int rulepts{5};
-  
-  double dx{0.2};
-  double dy{0.2};
-
-  double wavelength0      {0.8};
   double wavelength       {0.0};
-  int no_wavelength       {1};
-  double delta_wavelength {1e-3};
-  int num_modes           {4};
+  double wavelength0      = myinput.read_double("wavelength0", 0.8);
+  int no_wavelength       = myinput.read_integer("no_wavelength", 1);
+  double delta_wavelength = myinput.read_double("delta_wavelength", 1e-3);
+  int num_modes           = myinput.read_integer("num_modes", 1);
+  bool cladding_on        = myinput.read_boolean("cladding_on", false);
+  double rclad            = myinput.read_double("cladding_radius", 10.0);
+  bool abs_switch         = myinput.read_boolean("abs_state", false);
   
-  string shots_filename   {"5capas-core1-codigo.txt"};
-  double n0               {0.0};
-  double deltan           {-0.004};
-  int Nshx                {11};
-  int Nshy                {11};
-  double delta_shx        {6.0};
-  double delta_shy        {5.0};
-  double sigma_shx        {0.5};
-  double sigma_shy        {2.5};
-  
-  // int nholes              {15};
-  // double holes_radius     {15.0};
+  string shots_filename   = myinput.read_string("shots_filename", "shots");
+  double n0, n1           {0.0};
+  double deltan           = myinput.read_double("deltan", 1e-4);
+  int Nshx                = myinput.read_integer("Nshx", 11);
+  int Nshy                = myinput.read_integer("Nshx", 11);
+  double delta_shx        = myinput.read_double("delta_shx", 3.0);
+  double delta_shy        = myinput.read_double("delta_shy", 6.0);
+  double sigma_shx        = myinput.read_double("sigma_shx", 0.5);
+  double sigma_shy        = myinput.read_double("sigma_shx", 2.5);
   
   ///////////////////////////////////////////////////////////////////////
   // Set fiber and pulse light objects
@@ -69,7 +73,7 @@ int main(int argc,char **argv){
     comm.print_communicator_parameters();
   
   // Initialise space
-  space grid(Nx, Ny, dx, dy, rulepts, rulepts, comm);
+  fiber grid(Nx, Ny, dx, dy, rulepts, rulepts, abs_switch, comm);
   if(comm.get_iprocessor()==0)
     grid.print_grid_parameters();
 
@@ -99,12 +103,17 @@ int main(int argc,char **argv){
       //grid.set_step_index_fiber(4.0, 1.445, 1.4378);
       
       // grid.set_circular_honeycomb_fiber(holes_radius, nholes,
-      // 				    n0, deltan,
-      // 				    delta_holex,
-      // 				    delta_holey);
+      // 					n0, deltan,
+      // 					delta_holex,
+      // 					delta_holey);
       
       grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
-			  delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
+			       delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
+      if(cladding_on)
+	{
+	  n1 = n0 - deltan * 0.5;
+	  grid.set_fiber_cladding(n1, rclad);
+	}
       
       pulse.solve_helmholtz_eigenproblem(argc, argv, num_modes);
     }

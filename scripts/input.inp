@@ -1,0 +1,36 @@
+## Parameters' File
+####################
+
+# Grid
+Nx = 401
+Ny = 25
+
+dx = 0.2
+dy = 0.2
+
+# Parallel communication
+nprocsx = 1
+nprocsy = 15
+
+# FD rule
+rulepts = 5
+
+# Light
+wavelength0 = 0.8
+no_wavelength = 1
+delta_wavelength = 0.003
+num_modes = 1
+
+# Fiber
+shots_filename = "5capas-core1-codigo.txt"
+#no = 1.8
+deltan = -0.004
+Nshx = 11
+Nshy = 11
+delta_shx = 6.0
+delta_shy = 5.0
+sigma_shx = 0.5
+sigma_shy = 2.5
+cladding_on = true
+cladding_radius = 40.0
+abs_state = false

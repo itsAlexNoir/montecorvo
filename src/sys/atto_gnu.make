@@ -11,7 +11,7 @@ MONTEC_ROOT    = ..
 MONTEC_SRC     = ${MONTEC_ROOT}/src
 MONTEC_INCLUDE = ${MONTEC_ROOT}/include
 MONTEC_LIB     = ${MONTEC_ROOT}/lib
-BIN            = ${MONTEC_ROOT}/bin
+BIN          = ${MONTEC_ROOT}/bin
 
 # Compiler
 CC	 = gcc-7
@@ -31,40 +31,35 @@ OPT         = -O3 -funroll-loops -ftree-vectorize -ffast-math -fcx-limited-range
 #VEC = -funroll-loops -ftree-vectorize
 
 CCFLAGS  = ${DEB} ${OPT} ${PETSC_CCFLAGS} ${SLEPC_CCFLAGS}
-CXXFLAGS = ${DEB} ${OPT} -std=c++17 ${PETSC_CCPPFLAGS} ${SLEPC_CCPPFLAGS}
+CXXFLAGS = ${DEB} ${OPT} -std=c++11 ${PETSC_CCPPFLAGS} ${SLEPC_CCPPFLAGS}
 
 ######### Paths to external libraries
 ### Eigen
-EIGEN_ROOT    = /usr/local/opt/eigen
+EIGEN_ROOT    = 
 EIGEN_INCLUDE = ${EIGEN_ROOT}/include
 EIGEN_LIBS    = ${EIGEN_ROOT}/lib
 
 ### Armadillo
-ARMA_ROOT    = /usr/local/opt/armadillo
-ARMA_INCLUDE = ${ARMA_ROOT}/include
+ARMA_ROOT    = /opt/armadillo/8.300.3/gcc/7.2.1/usr
+ARMA_INCLUDE = ${ARMA_ROOT}/include/
 ARMA_LIBS    = ${ARMA_ROOT}/lib
 
 ### Openblas
-OPENBLAS_ROOT    = /usr/local/opt/openblas
+OPENBLAS_ROOT    = /opt/openblas/0.2.20/gnu-7
 OPENBLAS_INCLUDE = ${OPENBLAS_ROOT}/include
 OPENBLAS_LIBS    = ${OPENBLAS_ROOT}/lib
 
-### Boost
-BOOST_ROOT    = /usr/local/opt/boost
-BOOST_INCLUDE = ${BOOST_ROOT}/include
-BOOST_LIB     = ${BOOST_ROOT}/lib
-
 ### PETSc
-#PETSC_DIR = /opt/petsc/3.8.3/debug/complex/mpich/3.2.1/gcc/7.3.0/
-PETSC_DIR = /opt/petsc/3.8.3/fast/complex/mpich/3.2.1/gcc/7.3.0/
+#PETSC_DIR = /opt/petsc/3.8.2/mpich-gnu-7/debug/complex
+PETSC_DIR = /opt/petsc/3.8.3/fast/complex/openmpi/3.0.0/gcc/7.2.1/
 
 ### SLEPc
-#SLEPC_DIR = /opt/slepc/3.8.2/debug/complex/mpich/3.2.1/gcc/7.3.0/
-SLEPC_DIR = /opt/slepc/3.8.2/fast/complex/mpich/3.2.1/gcc/7.3.0/
+#SLEPC_DIR = /opt/slepc/3.8.1/mpich-gnu-7/debug/complex
+SLEPC_DIR = /opt/slepc/3.8.2/fast/complex/openmpi/3.0.0/gcc/7.2.1/
 
 ### 
-INCLUDE = ${MONTEC_INCLUDE} -I ${BOOST_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
-LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB} -L${BOOST_LIB}
+INCLUDE = ${MONTEC_INCLUDE} -I ${ARMA_INCLUDE} # ${OPENBLAS_INCLUDE}
+LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB}
 
 # -----------------------------------------------------------------------------#
 #                                                                              #

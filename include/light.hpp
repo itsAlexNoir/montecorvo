@@ -1,25 +1,24 @@
-/////////////////////
-//// light.h
-////
-//// Declaration of the light class
-////
-////////////////////
+/*!
+  @file light.hpp
+  
+  @brief Declaration of the light class
+  
+*/
 
 #ifndef ____LIGHT__
 #define ____LIGHT__
 
 #include <slepceps.h>
 #include "constants.hpp"
-//#include "params.hpp"
 #include "halo_array.hpp"
 #include "communicator.hpp"
-#include "space.hpp"
+#include "fiber.hpp"
 
 class light{
   
 private:
   communicator* mycomm;
-  space* mygrid;
+  fiber* mygrid;
   int Nx;
   int Ny;
   int Nxglobal;
@@ -46,7 +45,7 @@ private:
   
 public:
   // Constructor
-  light(space& grid, communicator& comm,
+  light(fiber& grid, communicator& comm,
 	double _wavel,int argc, char **argv);
   // Destructor
   ~light(){

@@ -1,2 +1,2 @@
 OBJS = \
-communicator.o space.o light.o helmholtz.o
+params.o communicator.o fiber.o light.o spectralscan.o

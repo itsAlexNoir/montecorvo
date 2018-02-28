@@ -7,7 +7,7 @@
 
 include sys/ballard_gnu.make
 
-TARGET = ${BIN}/helmholtz.exec
+TARGET = ${BIN}/spectral_scan.exec
 VPATH  = ${INCLUDE}
 
 .PHONY: clean
@@ -22,10 +22,11 @@ include classes.lst
 ##             Module dependencies                 ##
 #####################################################
 
+params.o:
 communicator.o:
-space.o: communicator.o
-light.o: communicator.o space.o chkopts
-helmholtz.o: space.o
+fiber.o: communicator.o
+light.o: communicator.o fiber.o chkopts
+spectralscan.o: fiber.o
 
 #####################################################
 ##             		Rules                      ##

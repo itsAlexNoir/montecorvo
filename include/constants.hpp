@@ -11,11 +11,13 @@
 
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <math.h>
+#include <string>
+#include <map>
+#include <fstream>
 #include <vector>
 #include <array>
-#include <complex.h>
+#include <complex>
 #include <chrono>
 #include <ctime>
 #define ARMA_DONT_USE_WRAPPER
