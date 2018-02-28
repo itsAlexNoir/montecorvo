@@ -60,7 +60,7 @@ PETSC_DIR = /opt/petsc/3.8.3/fast/complex/mpich/3.2.1/gcc/7.3.0/
 
 ### SLEPc
 #SLEPC_DIR = /opt/slepc/3.8.2/debug/complex/mpich/3.2.1/gcc/7.3.0/
-SLEPC_DIR = /opt/slepc/3.8.2/fast/complex/mpich/3.2.1/gcc/7.3.0/
+SLEPC_DIR = /opt/slepc/3.8.1/fast/complex/mpich/3.2.1/gcc/7.3.0/
 
 ### 
 INCLUDE = ${MONTEC_INCLUDE} -I ${BOOST_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}

@@ -6,15 +6,14 @@
 #define ____PARAMS__
 
 #include <iostream>
-#include "boost/variant.hpp"
+#include "constants.hpp"
 
-typedef boost::variant<std::string, int, double> input_type;
-typedef std::map<std::string, input_type> inputMap;
+typedef std::map<std::string, std::string> inputMap;
 
 class input{
 private:
   std::ifstream infile;
-
+  
 public:
   input(std::string filename);
   /*!
@@ -22,7 +21,7 @@ public:
     \brief Class destructor
   */
   ~input(){infile.close();}
-
+  
   /// Class methods
   inputMap read_input(std::string filename);
   int read_integer(std::string mykey, int default_value = 1);
