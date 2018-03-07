@@ -109,69 +109,6 @@ void light::save_field_intensity(const string& name)
   myfile.close();
 }
 
-// For complex observables
-void light::save_observable(const arma::vec& obs, const string& name)
-{
-  ofstream file;
-  
-  string filename = name + ".dat";
-  file.open(filename);
-  
-  for(auto i=0; i<obs.size(); ++i)
-    file << obs(i) << endl;
-  
-  file.close();
-  
-}
-//////////////////////////////////
-// For complex observables
-void light::save_observable(const arma::cx_vec& obs, const string& name)
-{
-  ofstream file;
-  
-  string filename = name + ".dat";
-  file.open(filename);
-  
-  for(auto i=0; i<obs.size(); ++i)
-    file << real(obs(i)) << " " << imag(obs(i)) << endl;
-  
-  file.close();
-  
-}
-
-// For complex observables
-void light::save_observable(const arma::vec& time, const arma::vec& obs,
-			   const string& name)
-{
-  ofstream file;
-  
-  string filename = name + ".dat";
-  file.open(filename);
-  
-  for(auto i=0; i<obs.size(); ++i)
-    file << time(i) << " " << obs(i) << endl;
-  
-  file.close();
-  
-}
-//////////////////////////////////
-
-void light::save_observable(const arma::vec& time, const arma::cx_vec& obs,
-			    const string& name)
-{
-  ofstream file;
-  
-  string filename = name + ".dat";
-  file.open(filename);
-  
-  for(auto i=0; i<obs.size(); ++i)
-    file << time(i) << " " << real(obs(i)) << " "
-	 << imag(obs(i)) << endl;
-  
-  file.close();
-  
-}
-
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
@@ -238,7 +175,9 @@ void light::apply_helmholtz()
 
 ///////////////////////////////////////////////////////////////////
 
-int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_modes)
+int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_modes,
+					bool save_to_hdf5,
+					arma::uvec selected_modes)
 {
   EPSType        type;
   PetscReal      error,tol,re,im;
@@ -417,31 +356,64 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
     ierr = PetscPrintf(PETSC_COMM_WORLD,"\n");CHKERRQ(ierr);
   }
   
-  // Save eigenvectors to file
-  PetscInt selected_mode = 0;
-  ierr = EPSGetEigenpair(eps,selected_mode,&kr,&ki,xr,xi);CHKERRQ(ierr);
-  ofstream modefile;
-  filename = "field_dist/mode_no." + to_string(selected_mode)
-    + ".wavelength." + to_string(wavelength) + "."
-    + to_string(mycomm->get_iprocessor()) + ".dat";
-  modefile.open(filename);
+  // // Save eigenvectors to file
+  // PetscInt selected_modes = 0;
+  // ierr = EPSGetEigenpair(eps,selected_mode,&kr,&ki,xr,xi);CHKERRQ(ierr);
+  // ofstream modefile;
+  // filename = "field_dist/mode_no." + to_string(selected_mode)
+  //   + ".wavelength." + to_string(wavelength) + "."
+  //   + to_string(mycomm->get_iprocessor()) + ".dat";
+  // modefile.open(filename);
   
-  // Get eigenvector's values from Petsc Vec type
-  ierr = VecGetLocalSize(xr, &LocalVecSize);
-  if(LocalVecSize!=Nlocal) 
-    mycomm->parallel_stop("Local size of eigen vec not equal as local grid size!");
+  // // Get eigenvector's values from Petsc Vec type
+  // ierr = VecGetLocalSize(xr, &LocalVecSize);
+  // if(LocalVecSize!=Nlocal) 
+  //   mycomm->parallel_stop("Local size of eigen vec not equal as local grid size!");
   
-  ierr = VecGetArray(xr, &eigvec);
-  for(int ii=0; ii<Nlocal; ii++)    
-    modefile << PetscRealPart(eigvec[ii]) << " "
-	     << PetscImaginaryPart(eigvec[ii]) << endl;
+  // ierr = VecGetArray(xr, &eigvec);
+  // for(int ii=0; ii<Nlocal; ii++)    
+  //   modefile << PetscRealPart(eigvec[ii]) << " "
+  // 	     << PetscImaginaryPart(eigvec[ii]) << endl;
   
-  // Close file
-  energyfile.close();
-  modefile.close();
+  // // Close file
+  // energyfile.close();
+  // modefile.close();
+
+  
+  //////////////////////////////////////////
+  // Save HDF5 file
+  
+  PetscInt petscmode;
+  
+  if(save_to_hdf5)
+    if(selected_modes.size()<=num_eigen_modes)
+      for(int im=0; im<selected_modes.size(); im++)
+	{
+	  // Get the mode from eigensolver
+	  petscmode = selected_modes[im];
+	  
+	  ierr = EPSGetEigenpair(eps,petscmode,&kr,&ki,xr,xi);CHKERRQ(ierr);
+	  // Set filename
+	  filename = "mode_no." + to_string(selected_modes[im])
+	    + ".wavelength." + to_string(wavelength);
+	  
+	  // Get eigenvector's values from Petsc Vec type
+	  // Check vector sizes
+	  ierr = VecGetLocalSize(xr, &LocalVecSize);
+	  if(LocalVecSize!=Nlocal) 
+	    mycomm->parallel_stop("Local size of eigen vec not equal as local grid size!");
+	  // Actually get the array from Petsc Vec object
+	  ierr = VecGetArray(xr, &eigvec);
+	  // Copy Petsc vector to armadillo matrix
+	  arma::cx_mat mymode(eigvec, Nx, Ny);
+	  // Finally save vector
+	  save2DMatrix_hdf5(filename, mymode, mygrid, mycomm);
+	}
+    else
+      mycomm->parallel_stop("Number of save-to-file modes larger than the number of requested modes.");
   
   return ierr;
-  
+	
 }
 
 ///////////////////////////////////////////////////////////////////

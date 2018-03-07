@@ -1,2 +1,2 @@
 OBJS = \
-params.o communicator.o fiber.o light.o spectralscan.o
+params.o communicator.o io.o fiber.o light.o spectralscan.o

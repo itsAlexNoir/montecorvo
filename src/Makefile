@@ -25,6 +25,7 @@ include classes.lst
 params.o: 
 communicator.o:
 fiber.o: communicator.o
+io.o: communicator.o fiber.o
 light.o: communicator.o fiber.o chkopts
 spectralscan.o: params.o communicator.o fiber.o light.o 
 

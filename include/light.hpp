@@ -13,6 +13,7 @@
 #include "halo_array.hpp"
 #include "communicator.hpp"
 #include "fiber.hpp"
+#include "io.hpp"
 
 class light{
   
@@ -69,18 +70,15 @@ public:
   void apply_helmholtz();
   
   // Solve Helmholtz equation
-  int solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_modes);
+  int solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_modes,
+				   bool save_to_hdf5 = true,
+				   arma::uvec selected_modes = {0});
   
   // // Time evolution
   // void evolve(const laser& mypulse);
   
   // Functions to save the wavefunction to file
-  void save_field_intensity(const string& name);
-  void save_observable(const arma::vec& obs, const string& name);
-  void save_observable(const arma::cx_vec& obs, const string& name);
-  void save_observable(const arma::vec& time, const arma::vec& obs, const string& name);
-  void save_observable(const arma::vec& time, const arma::cx_vec& obs, const string& name);
-  
+  void save_field_intensity(const string& name);  
 };
 
 #endif // ____LIGHT_ //

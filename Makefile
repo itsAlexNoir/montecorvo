@@ -9,7 +9,7 @@ default: ${TARGET}
 clean: clean_src clean_bin
 
 clean_bin:
-	-@rm bin/*exec
+	@rm -rf bin/*exec
 clean_src:
 	cd src; ${MAKE} clean
 

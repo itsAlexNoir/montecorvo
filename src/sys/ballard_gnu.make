@@ -62,9 +62,27 @@ PETSC_DIR = /opt/petsc/3.8.3/fast/complex/mpich/3.2.1/gcc/7.3.0/
 #SLEPC_DIR = /opt/slepc/3.8.2/debug/complex/mpich/3.2.1/gcc/7.3.0/
 SLEPC_DIR = /opt/slepc/3.8.1/fast/complex/mpich/3.2.1/gcc/7.3.0/
 
+### ZLIB
+ZLIB_DIR     = /opt/zlib/1.2.11/gcc/7.3.0
+ZLIB_INCLUDE = ${ZLIB_DIR}/include
+ZLIB_LIB     = ${ZLIB_DIR}/lib
+
+### SZIP
+SZIP_DIR     = /opt/szip/2.1.1/gcc/7.3.0/
+SZIP_INCLUDE = ${SZIP_DIR}/include
+SZIP_LIB     = ${SZIP_DIR}/lib
+
+### HDF5
+HDF5_DIR     = /opt/hdf5/1.10.1/fast/mpich/3.2.1/gcc/7.3.0/
+HDF5_INCLUDE = ${HDF5_DIR}/include
+HDF5_LIB     = ${HDF5_DIR}/lib
+
 ### 
-INCLUDE = ${MONTEC_INCLUDE} -I ${BOOST_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
-LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB} -L${BOOST_LIB}
+INCLUDE = ${MONTEC_INCLUDE} -I${HDF5_INCLUDE} \
+	-I${ZLIB_INCLUDE} -I${SZIP_INCLUDE} # ${ARMA_INCLUDE} ${OPENBLAS_INCLUDE}
+LIBS = ${OPENBLAS_LIBS} -lopenblas ${SLEPC_SYS_LIB} -L${HDF5_LIB} \
+	${HDF5_LIB}/libhdf5_hl.a ${HDF5_LIB}/libhdf5.a\
+	-L${ZLIB_LIB} -L${SZIP_LIB} -lsz -lz -ldl -lm
 
 # -----------------------------------------------------------------------------#
 #                                                                              #

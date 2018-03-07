@@ -5,6 +5,7 @@
 */
 #include "constants.hpp"
 #include "communicator.hpp"
+#include "io.hpp"
 #include "params.hpp"
 #include "fiber.hpp"
 #include "light.hpp"
@@ -50,10 +51,13 @@ int main(int argc,char **argv){
   int no_wavelength       = myinput.read_integer("no_wavelength", 1);
   double delta_wavelength = myinput.read_double("delta_wavelength", 1e-3);
   int num_modes           = myinput.read_integer("num_modes", 1);
+  int num_saved_modes     = myinput.read_integer("num_saved_modes", 1);
   bool cladding_on        = myinput.read_boolean("cladding_on", false);
   double rclad            = myinput.read_double("cladding_radius", 10.0);
   bool abs_switch         = myinput.read_boolean("abs_state", false);
-  
+  int abs_mask_exponent   = myinput.read_integer("abs_mask_exponent",2);
+  double deltan_abs       = myinput.read_double("dn_abs", -0.002);
+
   string shots_filename   = myinput.read_string("shots_filename", "shots");
   double n0, n1           {0.0};
   double deltan           = myinput.read_double("deltan", 1e-4);
@@ -62,7 +66,17 @@ int main(int argc,char **argv){
   double delta_shx        = myinput.read_double("delta_shx", 3.0);
   double delta_shy        = myinput.read_double("delta_shy", 6.0);
   double sigma_shx        = myinput.read_double("sigma_shx", 0.5);
-  double sigma_shy        = myinput.read_double("sigma_shx", 2.5);
+  double sigma_shy        = myinput.read_double("sigma_shy", 2.5);
+  
+  bool save_to_hdf5;
+  arma::uvec selected_modes(num_saved_modes);
+  if(num_saved_modes>0)
+    {
+      save_to_hdf5 = true;
+      selected_modes = arma::regspace<arma::uvec>(0,num_saved_modes-1);
+    }
+  else
+    save_to_hdf5 = false;
   
   ///////////////////////////////////////////////////////////////////////
   // Set fiber and pulse light objects
@@ -99,23 +113,31 @@ int main(int argc,char **argv){
       pulse.set_wavelength(wavelength);
       // Set fiber's structure
       n0 = grid.get_refractive_index("YAG", wavelength);
+      n1 = n0 + deltan_abs;
       
-      //grid.set_step_index_fiber(4.0, 1.445, 1.4378);
+      grid.set_step_index_fiber(rclad, n0, n1);
       
       // grid.set_circular_honeycomb_fiber(holes_radius, nholes,
       // 					n0, deltan,
       // 					delta_holex,
       // 					delta_holey);
       
-      grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
-			       delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
-      if(cladding_on)
-	{
-	  n1 = n0 - deltan * 0.5;
-	  grid.set_fiber_cladding(n1, rclad);
-	}
+      //grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
+      //			       delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
       
-      pulse.solve_helmholtz_eigenproblem(argc, argv, num_modes);
+      if(cladding_on)
+	grid.set_fiber_cladding(n1, rclad);
+      
+      if(abs_switch)
+	grid.set_fiber_absorption(n1, rclad, abs_mask_exponent);
+      
+      // Save fiber profile to HDF5 file
+      string filename = "fiber_profile.n0." + to_string(n0);
+      save2DMatrix_hdf5(filename, grid.get_nfield(), &grid, &comm );
+
+      // Solve!
+      pulse.solve_helmholtz_eigenproblem(argc, argv, num_modes,
+					 save_to_hdf5, selected_modes);
     }
   
   auto t1 = chrono::high_resolution_clock::now();

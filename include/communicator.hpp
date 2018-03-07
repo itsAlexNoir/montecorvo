@@ -19,7 +19,8 @@ private:
 
   int iprocessor;
   int iprocglobal;
-
+  MPI_Comm mpicomm;
+  
   int numproc1dx;
   int numproc1dy;
   int numproc1dz;
@@ -54,6 +55,7 @@ public:
   int get_numproc1dy() const {return numproc1dy;}
   int get_maxproc1dx() const {return maxproc1dx;}
   int get_maxproc1dy() const {return maxproc1dy;}
+  MPI_Comm get_mpicomm() const {return mpicomm;}
   
   int get_ipx() const {return ipx;} 
   int get_ipy() const {return ipy;}

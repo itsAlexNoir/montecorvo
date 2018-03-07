@@ -1,0 +1,32 @@
+/*!
+  @file io.hpp
+
+  @brief Declaration of I/O functions.
+
+*/
+
+#ifndef ____IO__
+#define ____IO__
+
+#include "hdf5.h"
+#include "hdf5_hl.h"
+#include "constants.hpp"
+#include "communicator.hpp"
+#include "fiber.hpp"
+
+void save2DMatrix_hdf5(string name, arma::mat mymatrix);
+void save2DMatrix_hdf5(string name, arma::cx_mat mymatrix);
+void save2DMatrix_hdf5(string name, arma::mat mymatrix,
+		       fiber* mygrid, communicator* comm);
+void save2DMatrix_hdf5(string name, arma::cx_mat mymatrix,
+ 		       fiber* mygrid, communicator* comm);
+
+void save2DMatrix_txt(string name, arma::mat mymatrix);
+void save2DMatrix_txt(string name, arma::cx_mat mymatrix);
+
+void save_observable(const arma::vec& obs, const string& name);
+void save_observable(const arma::cx_vec& obs, const string& name);
+void save_observable(const arma::vec& time, const arma::vec& obs, const string& name);
+void save_observable(const arma::vec& time, const arma::cx_vec& obs, const string& name);
+
+#endif // ____IO__ 

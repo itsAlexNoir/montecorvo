@@ -265,22 +265,7 @@ void fiber::set_honeycomb_fiber(string filename,
 	    
 	  }
       }
-  
-  
-  // Save eigenvectors to file
-  ofstream profilefile;
-  filename = "field_dist/fiber_profile.n0."
-    + to_string(n0) + "."
-    + to_string(mycomm->get_iprocessor()) + ".dat";
-  profilefile.open(filename);
-  
-  for(int iy=0; iy<Ny; iy++)
-    for(int ix=0; ix<Nx; ix++)
-      profilefile << nfield(ix, iy) << endl;
-  
-  // Close file
-  profilefile.close();
-  
+    
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -291,14 +276,14 @@ void fiber::set_fiber_cladding(double n1, double rclad)
   double rad {0.0};
   for(int iy=0; iy<Ny; iy++)
     for(int ix=0; ix<Nx; ix++)
-      {
+      {	  
 	rad = sqrt(x_ax(ix) * x_ax(ix)
 		   + y_ax(iy) * y_ax(iy) );
 	
 	if(rad > rclad)
 	  nfield(ix, iy) = n1;
       }
-  
+ 
 }
 
 void fiber::set_fiber_absorption(double n1, double rclad, int exponent)

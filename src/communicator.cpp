@@ -25,6 +25,7 @@ communicator::communicator(int argc, char **argv,
   // Find out number of the processor we are working on.
   ierr = MPI_Comm_rank(MPI_COMM_WORLD, &iprocessor);
   
+  mpicomm       = MPI_COMM_WORLD;
   numprocessors = numproc1dx * numproc1dy; 
   maxproc1dx    = numproc1dx - 1;
   maxproc1dy    = numproc1dy - 1;

@@ -78,6 +78,8 @@ public:
   // Functions that returns private values
   int get_Nx() const;
   int get_Ny() const;
+  int get_Nxglobal() const;
+  int get_Nyglobal() const;
   double get_dx() const;
   double get_dy() const;
   double get_xmax() const;
@@ -123,6 +125,9 @@ public:
 
 inline int fiber::get_Nx() const {return Nx;}
 inline int fiber::get_Ny() const {return Ny;}
+
+inline int fiber::get_Nxglobal() const {return Nxglobal;}
+inline int fiber::get_Nyglobal() const {return Nyglobal;}
 
 inline double fiber::get_dx() const {return dx;}
 inline double fiber::get_dy() const {return dy;}
