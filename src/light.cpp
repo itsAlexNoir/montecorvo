@@ -356,6 +356,9 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
     ierr = PetscPrintf(PETSC_COMM_WORLD,"\n");CHKERRQ(ierr);
   }
   
+  // // Close file
+  energyfile.close();
+  
   // // Save eigenvectors to file
   // PetscInt selected_modes = 0;
   // ierr = EPSGetEigenpair(eps,selected_mode,&kr,&ki,xr,xi);CHKERRQ(ierr);
@@ -383,34 +386,34 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
   //////////////////////////////////////////
   // Save HDF5 file
   
-  PetscInt petscmode;
+  // PetscInt petscmode;
   
-  if(save_to_hdf5)
-    if(selected_modes.size()<=num_eigen_modes)
-      for(int im=0; im<selected_modes.size(); im++)
-	{
-	  // Get the mode from eigensolver
-	  petscmode = selected_modes[im];
+  // if(save_to_hdf5)
+  //   if(selected_modes.size()<=num_eigen_modes)
+  //     for(int im=0; im<selected_modes.size(); im++)
+  // 	{
+  // 	  // Get the mode from eigensolver
+  // 	  petscmode = selected_modes[im];
 	  
-	  ierr = EPSGetEigenpair(eps,petscmode,&kr,&ki,xr,xi);CHKERRQ(ierr);
-	  // Set filename
-	  filename = "mode_no." + to_string(selected_modes[im])
-	    + ".wavelength." + to_string(wavelength);
+  // 	  ierr = EPSGetEigenpair(eps,petscmode,&kr,&ki,xr,xi);CHKERRQ(ierr);
+  // 	  // Set filename
+  // 	  filename = "mode_no." + to_string(selected_modes[im])
+  // 	    + ".wavelength." + to_string(wavelength);
 	  
-	  // Get eigenvector's values from Petsc Vec type
-	  // Check vector sizes
-	  ierr = VecGetLocalSize(xr, &LocalVecSize);
-	  if(LocalVecSize!=Nlocal) 
-	    mycomm->parallel_stop("Local size of eigen vec not equal as local grid size!");
-	  // Actually get the array from Petsc Vec object
-	  ierr = VecGetArray(xr, &eigvec);
-	  // Copy Petsc vector to armadillo matrix
-	  arma::cx_mat mymode(eigvec, Nx, Ny);
-	  // Finally save vector
-	  save2DMatrix_hdf5(filename, mymode, mygrid, mycomm);
-	}
-    else
-      mycomm->parallel_stop("Number of save-to-file modes larger than the number of requested modes.");
+  // 	  // Get eigenvector's values from Petsc Vec type
+  // 	  // Check vector sizes
+  // 	  ierr = VecGetLocalSize(xr, &LocalVecSize);
+  // 	  if(LocalVecSize!=Nlocal) 
+  // 	    mycomm->parallel_stop("Local size of eigen vec not equal as local grid size!");
+  // 	  // Actually get the array from Petsc Vec object
+  // 	  ierr = VecGetArray(xr, &eigvec);
+  // 	  // Copy Petsc vector to armadillo matrix
+  // 	  arma::cx_mat mymode(eigvec, Nx, Ny);
+  // 	  // Finally save vector
+  // 	  save2DMatrix_hdf5(filename, mymode, mygrid, mycomm);
+  // 	}
+  //   else
+  //     mycomm->parallel_stop("Number of save-to-file modes larger than the number of requested modes.");
   
   return ierr;
 	

@@ -72,7 +72,14 @@ fiber::fiber(int _Nx, int _Ny, double _dx, double _dy,
   
   xfdcoeffs = xcoeff;
   yfdcoeffs = ycoeff;
-
+  
+  // Allocate this variable for the first time.
+  // This operation is needed for memory allocation.
+  shots.Nc = 2;
+  shots.coords = new double*[shots.Nc];
+  for(int ic=0; ic<shots.Nc; ic++)
+    shots.coords[ic] = new double[2];
+  
   // // Save gridpoints to file
   // ofstream xptsfile;
   // ofstream yptsfile;
@@ -204,6 +211,11 @@ void fiber::read_shot_coordinates(string filename, int nx, int ny,
     }
   else
     cout << "Unable to open file";
+    
+  // First delete previous allocation for this variable
+  for(int ic=0; ic<shots.Nc; ic++)
+    delete[] shots.coords[ic];
+  delete[] shots.coords;
   
   shots.Nc = arma::accu(binshots);
   shots.coords = new double*[shots.Nc];

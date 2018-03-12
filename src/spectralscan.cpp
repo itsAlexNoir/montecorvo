@@ -13,13 +13,14 @@
 int main(int argc,char **argv){
 
   /// Read parameters for this calculation
-  if(argc<1)
-    {
-      cout << "You must provide an input file to the program." << endl;
-      cout << "Aborting program..." << endl;
-    } 
-  input myinput(argv[1]);
-
+  // if(argc<1)
+  //   {
+  //     cout << "You must provide an input file to the program." << endl;
+  //     cout << "Aborting program..." << endl;
+  //   } 
+  //input myinput(argv[1]);
+  input myinput("./input.inp");
+  
   int nprocsx = myinput.read_integer("nprocsx", 1);
   int nprocsy = myinput.read_integer("nprocsy", 1);
   
@@ -115,15 +116,15 @@ int main(int argc,char **argv){
       n0 = grid.get_refractive_index("YAG", wavelength);
       n1 = n0 + deltan_abs;
       
-      grid.set_step_index_fiber(rclad, n0, n1);
+      //grid.set_step_index_fiber(rclad, n0, n1);
       
       // grid.set_circular_honeycomb_fiber(holes_radius, nholes,
       // 					n0, deltan,
       // 					delta_holex,
       // 					delta_holey);
       
-      //grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
-      //			       delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
+      grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
+      			       delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
       
       if(cladding_on)
 	grid.set_fiber_cladding(n1, rclad);
@@ -134,10 +135,10 @@ int main(int argc,char **argv){
       // Save fiber profile to HDF5 file
       string filename = "fiber_profile.n0." + to_string(n0);
       save2DMatrix_hdf5(filename, grid.get_nfield(), &grid, &comm );
-
+      
       // Solve!
       pulse.solve_helmholtz_eigenproblem(argc, argv, num_modes,
-					 save_to_hdf5, selected_modes);
+       					 save_to_hdf5, selected_modes);
     }
   
   auto t1 = chrono::high_resolution_clock::now();
