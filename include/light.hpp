@@ -65,6 +65,10 @@ public:
   double get_wavelength() const {cout << k0 << endl; return wavelength;}
   void set_wavelength(const double new_wave)
   {wavelength = new_wave; k0 = twopi / wavelength;}
+  double get_wavelength(const double frequency)
+  {return twopi * 0.3 / frequency;}
+  double get_frequency(const double wavelength)
+  {return twopi * 0.3 / wavelength;}
   
   // Apply Helmholtz equation
   void apply_helmholtz();

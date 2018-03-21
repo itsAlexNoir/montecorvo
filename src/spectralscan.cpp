@@ -48,9 +48,10 @@ int main(int argc,char **argv){
   double dy               = myinput.read_double("dy", 0.2);
 
   double wavelength       {0.0};
+  double frequency        {0.0};
   double wavelength0      = myinput.read_double("wavelength0", 0.8);
-  int no_wavelength       = myinput.read_integer("no_wavelength", 1);
-  double delta_wavelength = myinput.read_double("delta_wavelength", 1e-3);
+  double wavelength1      = myinput.read_double("wavelength1", 0.85);
+  double no_frequency     = myinput.read_double("no_frequency", 1e-3);
   int num_modes           = myinput.read_integer("num_modes", 1);
   int num_saved_modes     = myinput.read_integer("num_saved_modes", 1);
   bool cladding_on        = myinput.read_boolean("cladding_on", false);
@@ -99,6 +100,16 @@ int main(int argc,char **argv){
   // Start calculation propagation constant (beta)
   ///////////////////////////////////////////////////////////////////////
   
+  // Prepare loop for spectral scan
+  double lower_frequency = pulse.get_frequency(wavelength0);
+  double upper_frequency = pulse.get_frequency(wavelength1);
+  double delta_frequency = fabs(upper_frequency - lower_frequency) / no_frequency;
+  if(lower_frequency<=upper_frequency)
+    frequency = lower_frequency;
+  else
+    frequency = upper_frequency;
+  
+  
   // Print starting date
   point_time = chrono::system_clock::now();
   start_date = chrono::system_clock::to_time_t(point_time);
@@ -106,11 +117,12 @@ int main(int argc,char **argv){
     cout << endl << "Eigenproblem calculation starts at " << ctime(&start_date) << endl;
   
   auto t0 = chrono::high_resolution_clock::now();
-  
+
   // Start loop over wavelengths
-  for(int iw=0; iw<no_wavelength; iw++)
+  for(int iw=0; iw<no_frequency; iw++)
     {
-      wavelength = wavelength0 + double(iw) * delta_wavelength;
+      frequency += double(iw) * delta_frequency;
+      wavelength = pulse.get_wavelength(frequency);
       pulse.set_wavelength(wavelength);
       // Set fiber's structure
       n0 = grid.get_refractive_index("YAG", wavelength);
