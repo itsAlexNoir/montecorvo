@@ -160,18 +160,21 @@ void fiber::set_step_index_fiber(double r0, double n1, double n2)
 
 ///////////////////////////////////////////////////////////////////
 
-void fiber::set_circular_honeycomb_fiber(double r0, int no_holes,
+void fiber::set_circular_honeycomb_fiber(double r0, int no_sides,
+					 double xfactor, double yfactor,
 					 double n0, double dn,
 					 double ddx, double ddy,
 					 int exponent)
 {
   
   double argx, argy;  
+  int no_holes = (int) round(2.0 * pi * r0 / double(no_holes));
   double dtheta {twopi / no_holes};
   arma::vec angholes = arma::linspace(0.0, twopi-dtheta,no_holes);
   
-  arma::vec x0 = r0 * arma::sin(angholes);
-  arma::vec y0 = r0 * arma::cos(angholes);
+  arma::vec x0 = xfactor * r0 * arma::cos(angholes);
+  arma::vec y0 = yfactor * r0 * arma::sin(angholes);
+
   
   for(int ih=0; ih<no_holes; ih++)
     for(int iy=0; iy<Ny; iy++)

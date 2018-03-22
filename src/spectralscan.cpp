@@ -46,12 +46,16 @@ int main(int argc,char **argv){
   
   double dx               = myinput.read_double("dx", 0.2);
   double dy               = myinput.read_double("dy", 0.2);
-
+  
   double wavelength       {0.0};
   double frequency        {0.0};
+  double nw               {0.0};
+  double frequency0       {0.0};
+  bool frequency_scan     = myinput.read_boolean("frequency_scan", false);
   double wavelength0      = myinput.read_double("wavelength0", 0.8);
   double wavelength1      = myinput.read_double("wavelength1", 0.85);
-  double no_frequency     = myinput.read_double("no_frequency", 1e-3);
+  double no_frequency     = myinput.read_double("no_frequency", 1);
+  double no_wavelength    = myinput.read_double("no_wavelength", 1);
   int num_modes           = myinput.read_integer("num_modes", 1);
   int num_saved_modes     = myinput.read_integer("num_saved_modes", 1);
   bool cladding_on        = myinput.read_boolean("cladding_on", false);
@@ -60,9 +64,12 @@ int main(int argc,char **argv){
   int abs_mask_exponent   = myinput.read_integer("abs_mask_exponent",2);
   double deltan_abs       = myinput.read_double("dn_abs", -0.002);
 
+  string fiber_structure  = myinput.read_string("fiber_structure","step_index");
   string shots_filename   = myinput.read_string("shots_filename", "shots");
   double n0, n1           {0.0};
   double deltan           = myinput.read_double("deltan", 1e-4);
+  int no_holes            = myinput.read_integer("no_holes",1);
+  double hole_radius      = myinput.read_double("hole_radius",1.0);
   int Nshx                = myinput.read_integer("Nshx", 11);
   int Nshy                = myinput.read_integer("Nshx", 11);
   double delta_shx        = myinput.read_double("delta_shx", 3.0);
@@ -101,14 +108,24 @@ int main(int argc,char **argv){
   ///////////////////////////////////////////////////////////////////////
   
   // Prepare loop for spectral scan
-  double lower_frequency = pulse.get_frequency(wavelength0);
-  double upper_frequency = pulse.get_frequency(wavelength1);
-  double delta_frequency = fabs(upper_frequency - lower_frequency) / no_frequency;
-  if(lower_frequency<=upper_frequency)
-    frequency = lower_frequency;
+  double delta_frequency {0.0};
+  double delta_wavelength {0.0};
+  if(frequency_scan)
+    {
+      double lower_frequency = pulse.get_frequency(wavelength0);
+      double upper_frequency = pulse.get_frequency(wavelength1);
+      delta_frequency = fabs(upper_frequency - lower_frequency) / no_frequency;
+      if(lower_frequency<=upper_frequency)
+	frequency0 = lower_frequency;
+      else
+	frequency0 = upper_frequency;
+      nw = no_frequency;
+    }
   else
-    frequency = upper_frequency;
-  
+    {
+      delta_wavelength = fabs(wavelength1 - wavelength0) / no_wavelength;
+      nw = no_wavelength;
+    }
   
   // Print starting date
   point_time = chrono::system_clock::now();
@@ -117,26 +134,36 @@ int main(int argc,char **argv){
     cout << endl << "Eigenproblem calculation starts at " << ctime(&start_date) << endl;
   
   auto t0 = chrono::high_resolution_clock::now();
-
+  
   // Start loop over wavelengths
-  for(int iw=0; iw<no_frequency; iw++)
+  for(int iw=0; iw<nw; iw++)
     {
-      frequency += double(iw) * delta_frequency;
-      wavelength = pulse.get_wavelength(frequency);
+      if(frequency_scan)
+	{
+	  frequency = frequency0 + double(iw) * delta_frequency;
+	  wavelength = pulse.get_wavelength(frequency);
+	}
+      else
+	wavelength = wavelength0 + double(iw) * delta_wavelength; 
+      
       pulse.set_wavelength(wavelength);
       // Set fiber's structure
       n0 = grid.get_refractive_index("YAG", wavelength);
       n1 = n0 + deltan_abs;
       
-      //grid.set_step_index_fiber(rclad, n0, n1);
-      
-      // grid.set_circular_honeycomb_fiber(holes_radius, nholes,
-      // 					n0, deltan,
-      // 					delta_holex,
-      // 					delta_holey);
-      
-      grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
-      			       delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
+      if(fiber_structure=="regular_honeycomb")
+	grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
+				 delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
+      else if(fiber_structure=="circular_honeycomb")
+	grid.set_circular_honeycomb_fiber(hole_radius, no_holes,
+					  0.0, 1.6,
+					  n0, deltan,
+					  sigma_shx,
+					  sigma_shy);
+      else if(fiber_structure=="step_index")
+	grid.set_step_index_fiber(rclad, n0, n1);
+      else
+	cout << "You must choose an structure for the fiber." << endl;
       
       if(cladding_on)
 	grid.set_fiber_cladding(n1, rclad);

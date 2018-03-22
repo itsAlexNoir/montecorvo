@@ -107,6 +107,7 @@ public:
   double get_refractive_index(string material, double wavelength);
   void set_step_index_fiber(double r0, double n1, double n2);
   void set_circular_honeycomb_fiber(double r0, int no_holes,
+				    double xfactor, double yfactor,
 				    double n0, double dn,
 				    double ddx, double ddy,
 				    int exponent=8);
