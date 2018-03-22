@@ -68,7 +68,7 @@ int main(int argc,char **argv){
   string shots_filename   = myinput.read_string("shots_filename", "shots");
   double n0, n1           {0.0};
   double deltan           = myinput.read_double("deltan", 1e-4);
-  int no_holes            = myinput.read_integer("no_holes",1);
+  int no_sides            = myinput.read_integer("no_sides",1);
   double hole_radius      = myinput.read_double("hole_radius",1.0);
   int Nshx                = myinput.read_integer("Nshx", 11);
   int Nshy                = myinput.read_integer("Nshx", 11);
@@ -155,7 +155,7 @@ int main(int argc,char **argv){
 	grid.set_honeycomb_fiber(shots_filename, n0, deltan, Nshx, Nshy,
 				 delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
       else if(fiber_structure=="circular_honeycomb")
-	grid.set_circular_honeycomb_fiber(hole_radius, no_holes,
+	grid.set_circular_honeycomb_fiber(hole_radius, no_sides,
 					  0.0, 1.6,
 					  n0, deltan,
 					  sigma_shx,
