@@ -168,25 +168,29 @@ void fiber::set_circular_honeycomb_fiber(double r0, int no_sides,
 {
   
   double argx, argy;  
-  int no_holes = (int) round(2.0 * pi * r0 / double(no_holes));
+  int no_holes = (int) round(2.0 * pi * r0 / double(no_sides));
   double dtheta {twopi / no_holes};
-  arma::vec angholes = arma::linspace(0.0, twopi-dtheta,no_holes);
-  
+  arma::vec angholes = arma::linspace(0.0, twopi-dtheta,no_holes) - pi/2.0;
+
   arma::vec x0 = xfactor * r0 * arma::cos(angholes);
   arma::vec y0 = yfactor * r0 * arma::sin(angholes);
-
-  
-  for(int ih=0; ih<no_holes; ih++)
-    for(int iy=0; iy<Ny; iy++)
-      for(int ix=0; ix<Nx; ix++)
-	{
-	  argx = ( x_ax(ix) - x0(ih) ) / ddx;
-	  argy = ( y_ax(iy) - y0(ih) ) / ddy; 
-	  argx = pow(argx,exponent);
-	  argy = pow(argy,exponent);
-	  nfield(ix, iy) += n0 + dn * exp(-argx) * exp(-argy);
-	}
-  
+    
+  for(int iy=0; iy<Ny; iy++)
+    for(int ix=0; ix<Nx; ix++)
+      {	
+	nfield(ix, iy) = n0;
+	
+	for(int ih=0; ih<no_holes; ih++)
+	  {
+	    
+	    argx = ( x_ax(ix) - x0(ih) ) / ddx;
+	    argy = ( y_ax(iy) - y0(ih) ) / ddy; 
+	    argx = pow(argx,exponent);
+	    argy = pow(argy,exponent);
+	    nfield(ix, iy) += dn * exp(-argx) * exp(-argy);
+	    
+	  }
+      }
 }
 
 ///////////////////////////////////////////////////////////////////

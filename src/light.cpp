@@ -349,7 +349,7 @@ int light::solve_helmholtz_eigenproblem(int argc,char **argv, int num_eigen_mode
       }
       // Save eigen energies to file
       if (mycomm->get_iprocessor()==0)
-      	energyfile << i << " " << setw(8) << double(re) << " " << double(im)
+      	energyfile << i << " " << setw(19) << setprecision(16) << double(re) << " " << double(im)
 		   << " " << sqrt(double(re)) << " " << sqrt(double(im)) << endl; 
     }
     

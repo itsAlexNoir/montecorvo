@@ -156,10 +156,10 @@ int main(int argc,char **argv){
 				 delta_shx, delta_shy, sigma_shx, sigma_shy, 8);
       else if(fiber_structure=="circular_honeycomb")
 	grid.set_circular_honeycomb_fiber(hole_radius, no_sides,
-					  0.0, 1.6,
+					  1.0, 1.6,
 					  n0, deltan,
 					  sigma_shx,
-					  sigma_shy);
+					  sigma_shy, 8);
       else if(fiber_structure=="step_index")
 	grid.set_step_index_fiber(rclad, n0, n1);
       else
